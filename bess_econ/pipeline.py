@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 
 from . import backtest as BT
-from . import charts as C
 from . import montecarlo as MC
+from . import redraw
 from .dispatch import Battery, optimise_day
 from .nem import data as D
 from .nem import explore as X
@@ -19,7 +19,6 @@ def run(raw_dir: Path, out: Path, region: str = "QLD1", test_start: str | None =
         synthetic: bool = False, mc_runs: int = 5000, log=print) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     tag = "合成测试数据（非真实电价，仅验证流程）" if synthetic else "AEMO 公开数据"
-    src = f"数据：{tag}，{region}；模型：bess-economics"
 
     notes: list[str] = []
     df = D.load(raw_dir, region, log=notes)
@@ -45,8 +44,7 @@ def run(raw_dir: Path, out: Path, region: str = "QLD1", test_start: str | None =
     # ---- 市场画像（测试期）----
     profile = X.market_profile(test_df)
     spreads = X.daily_spreads(P.loc[P.index >= ts])
-    C.duck_curve(X.monthly_profile(test_df), out / "01_duck_curve.png", region, src)
-    C.spread_distribution(spreads, out / "02_daily_spread.png", region, src)
+    X.monthly_profile(test_df).to_csv(out / "monthly_profile.csv")
     spreads.to_csv(out / "daily_spreads.csv")
 
     # ---- 回测 ----
@@ -54,8 +52,6 @@ def run(raw_dir: Path, out: Path, region: str = "QLD1", test_start: str | None =
     bt = BT.run_backtest(P, Dm, battery, ts, log=log)
     table = bt["table"]
     table.to_csv(out / "strategy_table.csv")
-    C.strategy_bars(table, out / "03_strategy_capture.png", src)
-    C.cumulative(bt["daily"], out / "04_cumulative_revenue.png", src)
     for k, d in bt["daily"].items():
         d.to_csv(out / f"daily_{k}.csv")
 
@@ -66,16 +62,15 @@ def run(raw_dir: Path, out: Path, region: str = "QLD1", test_start: str | None =
     day = (cand - cand.median()).abs().idxmin() if len(cand) else p.idxmax()
     perf = optimise_day(bt["actual"].loc[day].to_numpy(), battery)
     plan = optimise_day(bt["pred"].loc[day].to_numpy(), battery, bt["actual"].loc[day].to_numpy())
-    C.example_day(day, bt["actual"].loc[day], bt["pred"].loc[day], perf, plan, out / "05_example_day.png", src)
+    pd.DataFrame(dict(actual=bt["actual"].loc[day].to_numpy(), pred=bt["pred"].loc[day].to_numpy(),
+                      soc_perfect=perf.soc, soc_plan=plan.soc)).to_csv(out / "example_day.csv", index=False)
 
     # ---- 衰减权衡、时长对比（完美预知口径）----
     true_cost = 30.0
     sweep = BT.degradation_sweep(bt["actual"], battery, true_cost=true_cost, log=log)
     sweep.to_csv(out / "degradation_sweep.csv", index=False)
-    C.degradation_frontier(sweep, true_cost, out / "06_degradation_tradeoff.png", src)
     dur = BT.duration_compare(bt["actual"], battery, log=log)
     dur.to_csv(out / "duration_compare.csv", index=False)
-    C.duration_bars(dur, out / "07_duration.png", src)
 
     # ---- 蒙特卡洛 IRR（GBM 策略的真实可实现收益）----
     au = MC.AUAssumptions()
@@ -83,7 +78,7 @@ def run(raw_dir: Path, out: Path, region: str = "QLD1", test_start: str | None =
     sim = MC.simulate(bt["daily"]["gbm"].revenue, au, n=mc_runs)
     mc = MC.summarise(sim, au)
     mc["breakeven_revenue_aud_per_mw_year"] = MC.breakeven_revenue_per_mw(au)
-    C.irr_hist(sim, mc, au.hurdle, out / "08_irr_distribution.png", src)
+    sim[["irr"]].to_csv(out / "mc_irr.csv", index=False)
 
     summary = dict(
         data_source=tag, region=region, data=v, test_start=str(ts.date()), test_days=int(len(bt["actual"])),
@@ -98,5 +93,7 @@ def run(raw_dir: Path, out: Path, region: str = "QLD1", test_start: str | None =
         au_assumptions={k: v for k, v in au.__dict__.items()}, montecarlo=mc, example_day=str(pd.Timestamp(day).date()),
     )
     (out / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2, default=float), encoding="utf-8")
+    for lang in ("zh", "en"):
+        redraw.nem_charts(out, lang, log=log)
     log(f"[完成] 结果在 {out}")
     return summary

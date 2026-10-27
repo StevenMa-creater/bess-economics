@@ -1,5 +1,8 @@
 """根据 outputs/nem/summary.json 和 outputs/china/summary.json 生成 README 的结论区块。
 
+同时更新两份 README：README.md（英文，默认）和 README.zh-CN.md（中文）。
+情景实验的"发现"：中文读 note，英文读 note_en（没有 note_en 时英文版不列这一条）。
+
     python scripts/update_readme.py            # 真实数据
     python scripts/update_readme.py --demo     # 用合成数据结果预览排版（会标注"非真实数据"）
 """
@@ -109,8 +112,132 @@ def china_block(s: dict) -> str:
     lines += ["", "![各省对比](outputs/china/province_compare.png)", "",
               f"没有容量电价时只靠套利 IRR 约 {pct(s['no_capacity_price_2h']['irr_project_posttax'],1)}，"
               f"山东 2h 加容量电价后 {pct(s['shandong_2h']['irr_project_posttax'],1)}；龙卷风敏感性分析显示放电价差、循环次数、充电价格三个交易参数对 IRR 的影响最大，设备投资排第四。",
-              "", "![山东敏感性](outputs/china/tornado_shandong_2h.png)", ""]
+              "", "![山东敏感性](outputs/china/tornado_shandong_2h.png)", "",
+              "> 容量电价口径：甘肃按已出台的煤电容量电价基准 330 元/kW·年折算；山东按全国煤电容量电价基准 165 元/kW·年推算，"
+              "广东 200 元/kW·年为市场传闻值，两省储能容量电价细则出台后需更新（见 `bess_econ/china_irr/presets.py`）。", ""]
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------- English
+
+STRATEGY_EN = {"perfect": "Perfect foresight (upper bound)", "gbm": "GBM forecast + optimiser",
+               "persistence": "Yesterday's prices + optimiser", "fixed": "Fixed-schedule rule"}
+
+
+def nem_block_en(s: dict, img: str) -> str:
+    import pandas as pd
+    perf = pd.read_csv(ROOT / img / "daily_perfect.csv", index_col=0, parse_dates=True).revenue
+    top = perf.sort_values(ascending=False)
+    top5_share = top.head(5).sum() / perf.sum()
+    top_day = top.index[0].strftime("%Y-%m-%d")
+    st, m, mc, fm = s["strategies"], s["market"], s["montecarlo"], s["forecast_metrics"]
+    deg = sorted(s["degradation"], key=lambda r: -r["net_of_true_degradation_per_mw_year"])[0]
+    deg0 = [r for r in s["degradation"] if r["delta"] == 0][0]
+    dur = {int(r["duration_h"]): r for r in s["durations"]}
+    warn = "" if s["data_source"] == "AEMO 公开数据" else "\n> ⚠️ Results below come from **synthetic test data** and only preview the layout. They are not real findings.\n"
+    g, pe, fx = st["gbm"], st["persistence"], st["fixed"]
+    lines = [f"### Australia NEM · {s['region']} · {s['test_start'][:4]} backtest ({s['test_days']} days, 5-minute prices)", warn,
+             "| Strategy | Arbitrage revenue (A$k/MW/yr) | Capture rate | Equivalent cycles/yr |", "|---|---|---|---|"]
+    for key in ("perfect", "gbm", "persistence", "fixed"):
+        r = st[key]
+        lines.append(f"| {STRATEGY_EN[key]} | {k(r['revenue_aud_per_mw_year'])} | {pct(r['capture_rate'])} | {r['cycles_per_year']:.0f} |")
+    counter = ""
+    if pe["capture_rate"] < fx["capture_rate"]:
+        counter = (f" **Counter-intuitive result:** optimising against yesterday's prices ({pct(pe['capture_rate'])}) does worse than a simple "
+                   f"fixed-schedule rule ({pct(fx['capture_rate'])}). The optimiser treats yesterday's noise as signal and over-trades; "
+                   "with a weak forecast, optimising can be worse than not optimising.")
+    jan22 = (" — consistent with Modo Energy's finding that 22 January alone delivered 57% of Queensland battery revenue that month, "
+             "an external check on the model" if top_day == "2025-01-22" else "")
+    lines += ["", f"![Strategy comparison]({img}/03_strategy_capture.png)", "", "**Key findings**", "",
+              f"1. **What dispatch skill is worth.** For the same 100 MW / 200 MWh battery, a GBM forecast feeding the MILP captures "
+              f"**{pct(g['capture_rate'])}** of the perfect-foresight revenue — {(g['capture_rate'] - pe['capture_rate'])*100:.0f} percentage points above "
+              f"re-using yesterday's prices and {(g['capture_rate'] - fx['capture_rate'])*100:.0f} points above a fixed charge/discharge schedule. "
+              f"Day-ahead forecast MAE is {fm['gbm']['mae']:.0f} A$/MWh (baseline {fm['persistence']['mae']:.0f}); intraday rank correlation "
+              f"{fm['gbm']['intraday_rank_corr']:.2f} (baseline {fm['persistence']['intraday_rank_corr']:.2f})." + counter,
+              f"2. **Revenue is concentrated in a few days.** The top 5 days deliver **{pct(top5_share)}** of annual perfect-foresight revenue; "
+              f"the best day is {top_day}{jan22}. Being full and available on extreme-price days matters more than everyday small spreads.",
+              f"3. **Market shape.** Prices are negative in **{pct(m['negative_share'])}** of intervals (about {m['negative_hours_per_year']:,.0f} hours a year); "
+              f"the median daily 2-hour spread is **A${s['median_daily_spread_2h']:,.0f}/MWh**. Midday solar pushes prices below zero and the evening "
+              "ramp sets the peak — this duck curve is where storage earns its money.",
+              f"4. **More cycling is not more profit.** With a true degradation cost of A$30/MWh discharged, net revenue peaks when the dispatch "
+              f"model includes a wear cost of δ = {deg['delta']:.0f} A$/MWh ({k(deg['net_of_true_degradation_per_mw_year'])}k A$/MW/yr at "
+              f"{deg['cycles_per_year']:.0f} cycles/yr) — {pct(deg['net_of_true_degradation_per_mw_year']/deg0['net_of_true_degradation_per_mw_year']-1)} "
+              f"more than ignoring wear (δ = 0: {k(deg0['net_of_true_degradation_per_mw_year'])}k at {deg0['cycles_per_year']:.0f} cycles/yr), with half the cycles.",
+              f"5. **Duration.** Revenue per MW for 1h / 2h / 4h is {k(dur[1]['revenue_aud_per_mw_year'])} / {k(dur[2]['revenue_aud_per_mw_year'])} / "
+              f"{k(dur[4]['revenue_aud_per_mw_year'])}k A$/yr; revenue per MWh falls from {k(dur[1]['revenue_aud_per_mwh_year'])}k to "
+              f"{k(dur[4]['revenue_aud_per_mwh_year'])}k A$.",
+              f"6. **Is merchant arbitrage alone investable?** Across {mc['n']:,} Monte Carlo runs, project IRR P10 / P50 / P90 = "
+              f"**{pct(mc['irr_p10'],1)} / {pct(mc['irr_p50'],1)} / {pct(mc['irr_p90'],1)}**, with a {pct(mc['prob_irr_above_hurdle'])} chance of "
+              f"clearing an 8% hurdle. A 7% IRR needs about **A${k(mc['breakeven_revenue_aud_per_mw_year'])}k/MW** in year 1, while the GBM strategy "
+              f"realises about A${k(g['revenue_aud_per_mw_year'])}k/MW. Energy arbitrage alone falls just short; the project needs FCAS revenue or a "
+              "long-term capacity/tolling contract. For reference, Modo Energy reports an average NEM battery revenue of A$149k/MW/yr in 2024 (including FCAS).",
+              "",
+              f"<details><summary>More charts</summary>\n\n![Duck curve]({img}/01_duck_curve.png)\n![Daily spread]({img}/02_daily_spread.png)\n"
+              f"![Cumulative revenue]({img}/04_cumulative_revenue.png)\n![Example day]({img}/05_example_day.png)\n"
+              f"![Degradation trade-off]({img}/06_degradation_tradeoff.png)\n![Duration]({img}/07_duration.png)\n"
+              f"![IRR distribution]({img}/08_irr_distribution.png)\n\n</details>", ""]
+    return "\n".join(lines)
+
+
+def _label_en(label: str) -> str:
+    return label.replace(" / RTE 86%", "").replace("循环上限", "cycle cap")
+
+
+def scenario_block_en(files: list[Path]) -> str:
+    res = [json.loads(f.read_text(encoding="utf-8")) for f in files]
+    order = {"4h": 0, "cycles_1.0": 1, "4h_cycles_1.0": 2}
+    res.sort(key=lambda r: (order.get(r["name"], 99), r["name"]))
+
+    def row(name, m):
+        g = m["gbm"]
+        return (f"| {name} | {m['perfect']['revenue_k_per_mw']:.0f} | {g['revenue_k_per_mw']:.0f} | {pct(g['capture_rate'])} | "
+                f"{g['cycles_per_year']:.0f} | {g['net_k_per_mw']:.0f} | {m['capex_mid_aud_m']:.0f} | "
+                f"{pct(m['irr']['gross_p50'],1)} | {pct(m['irr']['net_p50'],1)} |")
+
+    lines = ["### Scenario experiments: change one parameter, see what moves", "",
+             "Same year of real prices and the same GBM forecast; only the battery parameters change. Capex uses a two-part estimate "
+             "(A$560/kW power + A$240/kWh energy; mode A$520/kWh for 2h and A$380/kWh for 4h). Reproduce with `python run.py scenario --hours 4`.", "",
+             "| Scenario (100 MW) | Perfect foresight | GBM revenue | Capture | Cycles/yr | Net of cell wear | Capex (A$m) | IRR P50 (gross) | IRR P50 (lifetime) |",
+             "|---|---|---|---|---|---|---|---|---|",
+             row("Base: 2h / 1.5 cycles", res[0]["baseline"])]
+    lines += [row(_label_en(r["label"]), r["scenario"]) for r in res]
+    lines += ["", "Revenue in A$k/MW/yr. Net of cell wear = revenue − A$30 per MWh discharged. Gross IRR matches the Monte Carlo above "
+              "(capacity fades a fixed 2% a year, extra cycling is free); lifetime IRR sets aside A$30 per MWh discharged to replace cells and keep capacity, "
+              "so cycling has a cost — use this column when comparing cycle caps.", ""]
+    notes = [r for r in res if r.get("note_en")]
+    if notes:
+        lines += ["**Findings**", ""] + [f"- **{_label_en(r['label'])}**: {r['note_en']}" for r in notes] + [""]
+    return "\n".join(lines)
+
+
+CHINA_EN = [("Reference: no capacity price", "no_capacity_price_2h"), ("Shandong 2h", "shandong_2h"), ("Shandong 4h", "shandong_4h"),
+            ("Gansu 2h", "gansu_2h"), ("Guangdong 2h", "guangdong_2h")]
+
+
+def china_block_en(s: dict) -> str:
+    lines = ["### China · 15-year cash-flow model for independent storage (Doc. 114 capacity price)", "",
+             "| Case (100 MW) | Capacity price (CNY/kW·yr) | Year-1 revenue (CNY m) | Project IRR (post-tax) | Equity IRR | Payback |",
+             "|---|---|---|---|---|---|"]
+    for name, key in CHINA_EN:
+        r = s[key]
+        lines.append(f"| {name} | {r['capacity_price']:.1f} | {r['revenue_year1_wan']/100:,.1f} | {pct(r['irr_project_posttax'],1)} | "
+                     f"{pct(r['irr_equity'],1)} | {r['payback_project_years']:.1f} yrs |")
+    lines += ["", "![Province comparison](outputs/china/province_compare.png)", "",
+              f"With arbitrage alone, project IRR is about {pct(s['no_capacity_price_2h']['irr_project_posttax'],1)}; adding the capacity price lifts "
+              f"a 2h project in Shandong to {pct(s['shandong_2h']['irr_project_posttax'],1)}. The tornado chart shows that three trading parameters — "
+              "discharge spread, cycles per day and charging price — move IRR more than equipment capex, which ranks fourth.",
+              "", "![Shandong sensitivity](outputs/china/tornado_shandong_2h.png)", "",
+              "> Capacity-price basis: Gansu uses its published coal capacity-price benchmark of CNY 330/kW·yr. Shandong is estimated from the national "
+              "coal benchmark of CNY 165/kW·yr, and Guangdong's CNY 200/kW·yr is an unconfirmed market figure; both should be updated once the "
+              "provinces publish storage-specific rules (see `bess_econ/china_irr/presets.py`).", ""]
+    return "\n".join(lines)
+
+
+def _write(readme: Path, parts: list[str]) -> None:
+    text = readme.read_text(encoding="utf-8")
+    block = f"{START}\n" + "\n".join(parts) + f"\n{END}"
+    text = re.sub(re.escape(START) + ".*?" + re.escape(END), lambda _: block, text, flags=re.S)
+    readme.write_text(text, encoding="utf-8")
 
 
 def main():
@@ -118,24 +245,23 @@ def main():
     ap.add_argument("--demo", action="store_true")
     a = ap.parse_args()
     nem_dir = "outputs/nem_demo" if a.demo else "outputs/nem"
-    parts = []
     nem_json = ROOT / nem_dir / "summary.json"
-    if nem_json.exists():
-        parts.append(nem_block(json.loads(nem_json.read_text(encoding="utf-8")), nem_dir))
-    else:
-        parts.append("> 澳洲 NEM 结果尚未生成：按「用法」下载数据后运行 `python run.py nem`。\n")
-    scen = sorted((ROOT / "outputs/scenarios").glob("*.json"))
-    if scen and not a.demo:
-        parts.append(scenario_block(scen))
+    scen = sorted((ROOT / "outputs/scenarios").glob("*.json")) if not a.demo else []
     china_json = ROOT / "outputs/china/summary.json"
-    if china_json.exists():
-        parts.append(china_block(json.loads(china_json.read_text(encoding="utf-8"))))
-    readme = ROOT / "README.md"
-    text = readme.read_text(encoding="utf-8")
-    block = f"{START}\n" + "\n".join(parts) + f"\n{END}"
-    text = re.sub(re.escape(START) + ".*?" + re.escape(END), lambda _: block, text, flags=re.S)
-    readme.write_text(text, encoding="utf-8")
-    print("README 结论区块已更新")
+    nem = json.loads(nem_json.read_text(encoding="utf-8")) if nem_json.exists() else None
+    china = json.loads(china_json.read_text(encoding="utf-8")) if china_json.exists() else None
+
+    zh = [nem_block(nem, nem_dir) if nem else "> 澳洲 NEM 结果尚未生成：按「用法」下载数据后运行 `python run.py nem`。\n"]
+    en = [nem_block_en(nem, nem_dir) if nem else "> NEM results not generated yet: download the data (see Usage) and run `python run.py nem`.\n"]
+    if scen:
+        zh.append(scenario_block(scen))
+        en.append(scenario_block_en(scen))
+    if china:
+        zh.append(china_block(china))
+        en.append(china_block_en(china))
+    _write(ROOT / "README.zh-CN.md", zh)
+    _write(ROOT / "README.md", en)
+    print("README.md（英文）和 README.zh-CN.md（中文）的结论区块已更新")
 
 
 if __name__ == "__main__":

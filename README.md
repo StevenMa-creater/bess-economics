@@ -1,179 +1,183 @@
-# BESS Economics：储能电站收益、调度与投资回报
+# BESS Economics: Battery Storage Dispatch, Revenue and Investment Returns
 
-**English summary** — An open-source toolkit for grid-scale battery storage economics, built on real market data. It loads 5-minute AEMO NEM prices, solves a mixed-integer dispatch optimisation for every trading day, forecasts next-day prices with gradient-boosted trees in a strict walk-forward setup, measures how much of the perfect-foresight revenue a realistic strategy captures, quantifies the cycling-vs-degradation trade-off, and turns realised revenue into a Monte Carlo IRR distribution. A second module models Chinese independent storage under the 2026 capacity-price policy (NDRC Document No. 114).
+**English** | [中文](README.zh-CN.md)
 
-一个基于真实市场数据的储能电站经济性工具。回答三个问题：
+An open-source toolkit for grid-scale battery energy storage (BESS) economics, built on real market data. It answers three questions an investor or developer asks about a merchant battery:
 
-1. **一块电池在真实电价下最多能赚多少钱？** 用 5 分钟电价逐日求解混合整数规划（MILP），得到收益理论上限。
-2. **现实中能拿到上限的多少？** 次日电价预测（梯度提升树，按月滚动训练、零未来数据泄漏）→ 按预测做计划 → 按真实电价结算，算出"收益捕获率"。
-3. **这个收益够不够收回投资？** 把可实现收益接入 15 年现金流，用蒙特卡洛模拟出 IRR 分布；中国市场单独建模 114 号文容量电价。
+1. **What is the most this battery could earn at real prices?** A mixed-integer linear program (MILP) is solved for every trading day on 5-minute AEMO NEM prices to get the perfect-foresight revenue ceiling.
+2. **How much of that can a realistic operator capture?** A next-day price forecast (gradient-boosted trees, monthly walk-forward retraining, no look-ahead) drives the day-ahead schedule, which is then settled at actual prices to measure the **capture rate**.
+3. **Does that revenue pay back the investment?** Realised revenue feeds a 15-year cash flow and a Monte Carlo simulation that gives an IRR distribution. A separate module models Chinese independent storage under the 2026 capacity-price policy (NDRC Document No. 114).
 
-## 一分钟看结论
+## Results at a glance
+
+*Chart labels are in Chinese.*
 
 <!-- RESULTS:START -->
-### 澳洲 NEM · QLD1 · 2025 年回测（365 天，5 分钟电价）
+### Australia NEM · QLD1 · 2025 backtest (365 days, 5-minute prices)
 
-| 策略 | 年套利收入（A$ 千/MW） | 收益捕获率 | 年等效循环 |
+| Strategy | Arbitrage revenue (A$k/MW/yr) | Capture rate | Equivalent cycles/yr |
 |---|---|---|---|
-| 完美预知（上限） | 204 | 100% | 547 |
-| GBM 预测 + 优化 | 156 | 76% | 547 |
-| 昨日电价 + 优化 | 127 | 62% | 547 |
-| 固定时段规则 | 139 | 68% | 338 |
+| Perfect foresight (upper bound) | 204 | 100% | 547 |
+| GBM forecast + optimiser | 156 | 76% | 547 |
+| Yesterday's prices + optimiser | 127 | 62% | 547 |
+| Fixed-schedule rule | 139 | 68% | 338 |
 
-![策略对比](outputs/nem/03_strategy_capture.png)
+![Strategy comparison](outputs/nem/03_strategy_capture.png)
 
-**结论**
+**Key findings**
 
-1. **调度能力值多少钱**：同一块 100 MW / 200 MWh 电池，GBM 预测 + MILP 优化拿到完美预知上限的 **76%**，比"照抄昨天电价"高 14%（百分点），比固定时段规则高 8%。次日电价预测 MAE 41 A$/MWh（基准 50），日内排序相关性 0.85（基准 0.77）。**反直觉的一点**：用昨天电价做优化（62%）反而不如固定时段规则（68%），因为优化器会把昨天的随机波动当成信号、过度交易；预测质量不够时，"优化"可能比不优化更差。
-2. **收益高度集中**：全年收益最高的 5 天贡献了完美预知收入的 **30%**，最高的一天是 2025-01-22（与 Modo Energy 报告的"1 月 22 日一天占昆州电池当月收入 57%"一致，可作为模型的外部验证）。能否在极端价格日满电待命，比日常的小价差更重要。
-3. **市场形态**：负电价占全年 **20%** 的时段（约 1,782 小时），每日 2 小时价差中位数 **A$187/MWh**；午间光伏把电价压到负值、傍晚形成高峰，这是储能套利的来源。
-4. **多循环不等于多赚钱**：按真实衰减成本 30 A$/MWh 计，调度时计入 δ = 25 A$/MWh 时净收益最高（179 千 A$/MW/年，676 次/年），比不计衰减（δ = 0，151 千、1377 次/年）多 18%，循环次数减半。
-5. **时长**：1h / 2h / 4h 每 MW 年收入 128 / 204 / 303 千 A$，每 MWh 收入递减（128 → 76 千 A$）。
-6. **只靠能量套利能不能投**：蒙特卡洛 5,000 次，项目 IRR P10 / P50 / P90 = **1.6% / 4.8% / 8.4%**，超过 8% 门槛的概率 13%；达到 7% IRR 需要第 1 年约 **A$170 千/MW** 收入。GBM 策略实际可实现约 A$156 千/MW，略低于这条线，所以只靠能量套利不足以支撑投资，需要 FCAS 或长期容量合同补足。作为对照，Modo Energy 统计 2024 年 NEM 电池平均总收入（含 FCAS）为 A$149 千/MW/年。
+1. **What dispatch skill is worth.** For the same 100 MW / 200 MWh battery, a GBM forecast feeding the MILP captures **76%** of the perfect-foresight revenue — 14 percentage points above re-using yesterday's prices and 8 points above a fixed charge/discharge schedule. Day-ahead forecast MAE is 41 A$/MWh (baseline 50); intraday rank correlation 0.85 (baseline 0.77). **Counter-intuitive result:** optimising against yesterday's prices (62%) does worse than a simple fixed-schedule rule (68%). The optimiser treats yesterday's noise as signal and over-trades; with a weak forecast, optimising can be worse than not optimising.
+2. **Revenue is concentrated in a few days.** The top 5 days deliver **30%** of annual perfect-foresight revenue; the best day is 2025-01-22 — consistent with Modo Energy's finding that 22 January alone delivered 57% of Queensland battery revenue that month, an external check on the model. Being full and available on extreme-price days matters more than everyday small spreads.
+3. **Market shape.** Prices are negative in **20%** of intervals (about 1,782 hours a year); the median daily 2-hour spread is **A$187/MWh**. Midday solar pushes prices below zero and the evening ramp sets the peak — this duck curve is where storage earns its money.
+4. **More cycling is not more profit.** With a true degradation cost of A$30/MWh discharged, net revenue peaks when the dispatch model includes a wear cost of δ = 25 A$/MWh (179k A$/MW/yr at 676 cycles/yr) — 18% more than ignoring wear (δ = 0: 151k at 1377 cycles/yr), with half the cycles.
+5. **Duration.** Revenue per MW for 1h / 2h / 4h is 128 / 204 / 303k A$/yr; revenue per MWh falls from 128k to 76k A$.
+6. **Is merchant arbitrage alone investable?** Across 5,000 Monte Carlo runs, project IRR P10 / P50 / P90 = **1.6% / 4.8% / 8.4%**, with a 13% chance of clearing an 8% hurdle. A 7% IRR needs about **A$170k/MW** in year 1, while the GBM strategy realises about A$156k/MW. Energy arbitrage alone falls just short; the project needs FCAS revenue or a long-term capacity/tolling contract. For reference, Modo Energy reports an average NEM battery revenue of A$149k/MW/yr in 2024 (including FCAS).
 
-<details><summary>更多图表</summary>
+<details><summary>More charts</summary>
 
-![鸭子曲线](outputs/nem/01_duck_curve.png)
-![价差](outputs/nem/02_daily_spread.png)
-![累计收入](outputs/nem/04_cumulative_revenue.png)
-![调度示例](outputs/nem/05_example_day.png)
-![衰减权衡](outputs/nem/06_degradation_tradeoff.png)
-![时长](outputs/nem/07_duration.png)
-![IRR 分布](outputs/nem/08_irr_distribution.png)
+![Duck curve](outputs/nem/01_duck_curve.png)
+![Daily spread](outputs/nem/02_daily_spread.png)
+![Cumulative revenue](outputs/nem/04_cumulative_revenue.png)
+![Example day](outputs/nem/05_example_day.png)
+![Degradation trade-off](outputs/nem/06_degradation_tradeoff.png)
+![Duration](outputs/nem/07_duration.png)
+![IRR distribution](outputs/nem/08_irr_distribution.png)
 
 </details>
 
-### 情景实验：只改一个参数，结论怎么变
+### Scenario experiments: change one parameter, see what moves
 
-同一年真实电价、同一个 GBM 预测，只改电池参数；投资成本按"功率部分 560 A$/kW + 电池部分 240 A$/kWh"两段式估算（2h 众数 520、4h 众数 380 A$/kWh）。复现：`python run.py scenario --hours 4`。
+Same year of real prices and the same GBM forecast; only the battery parameters change. Capex uses a two-part estimate (A$560/kW power + A$240/kWh energy; mode A$520/kWh for 2h and A$380/kWh for 4h). Reproduce with `python run.py scenario --hours 4`.
 
-| 情景（100 MW） | 完美预知 | GBM 收入 | 捕获率 | 年循环 | 扣衰减净收入 | 投资（百万 A$） | IRR P50（毛收入） | IRR P50（全寿命） |
+| Scenario (100 MW) | Perfect foresight | GBM revenue | Capture | Cycles/yr | Net of cell wear | Capex (A$m) | IRR P50 (gross) | IRR P50 (lifetime) |
 |---|---|---|---|---|---|---|---|---|
-| 基准：2h / 1.5 循环 | 204 | 156 | 76% | 547 | 126 | 104 | 4.8% | 2.9% |
-| 4h / 循环上限 1.5 | 303 | 245 | 81% | 542 | 186 | 152 | 6.2% | 3.1% |
-| 2h / 循环上限 1 | 181 | 132 | 73% | 365 | 112 | 104 | 1.6% | 0.9% |
-| 4h / 循环上限 1 | 281 | 226 | 81% | 365 | 187 | 152 | 4.6% | 3.1% |
-| 2h / 循环上限 1.5 / RTE 90% | 207 | 160 | 77% | 547 | 131 | 104 | 5.3% | 3.6% |
+| Base: 2h / 1.5 cycles | 204 | 156 | 76% | 547 | 126 | 104 | 4.8% | 2.9% |
+| 4h / cycle cap 1.5 | 303 | 245 | 81% | 542 | 186 | 152 | 6.2% | 3.1% |
+| 2h / cycle cap 1 | 181 | 132 | 73% | 365 | 112 | 104 | 1.6% | 0.9% |
+| 4h / cycle cap 1 | 281 | 226 | 81% | 365 | 187 | 152 | 4.6% | 3.1% |
+| 2h / cycle cap 1.5 / RTE 90% | 207 | 160 | 77% | 547 | 131 | 104 | 5.3% | 3.6% |
 
-收入单位：千 A$/MW/年。扣衰减净收入 = 收入 − 每放 1 MWh × 30 A$ 电芯损耗。IRR 毛收入口径与上文蒙特卡洛一致（容量每年固定衰减 2%，多循环不计成本）；全寿命口径按每 MWh 放电计提 30 A$ 补充电芯、容量保持，循环成本随放电量增加，比较循环上限时应看这一列。
+Revenue in A$k/MW/yr. Net of cell wear = revenue − A$30 per MWh discharged. Gross IRR matches the Monte Carlo above (capacity fades a fixed 2% a year, extra cycling is free); lifetime IRR sets aside A$30 per MWh discharged to replace cells and keep capacity, so cycling has a cost — use this column when comparing cycle caps.
 
-**我的发现**
+**Findings**
 
-- **4h / 循环上限 1.5**：每 MW 收入多 57%，投资只多 46%，毛收入 IRR 从 4.8% 升到 6.2%；捕获率也从 76% 升到 81%，时长越长对预测误差越宽容。但每次循环放电量翻倍，计入电芯损耗后 IRR 只从 2.9% 到 3.1%，4h 的优势大部分来自更大的吞吐量。
-- **2h / 循环上限 1**：循环少了 33%，收入只少 15%（砍掉的是价差较小的交易），但扣掉电芯损耗后净收入仍少 11%，说明每天第二个半次循环的价差高于 30 A$/MWh 的衰减成本。质保把 2h 电池限制在每天 1 次，毛收入 IRR 从 4.8% 掉到 1.6%，循环次数条款很值钱。
-- **4h / 循环上限 1**：同样限到每天 1 次，4h 电池毛收入只少 8%（245 → 226），扣衰减净收入几乎不变（186 → 187），全寿命 IRR 都是 3.1%。4h 电池一次循环就能吃满傍晚高峰，多出的半次循环只够覆盖损耗，所以每天 1 次的质保对 4h 几乎没有代价，对 2h 却很贵。
-- **2h / 循环上限 1.5 / RTE 90%**：我试过把效率从 86% 提到 90%，发现每 MW 每年多赚 __ 千澳元，IRR 从 4.8% 升到 __%，说明……
+- **4h / cycle cap 1.5**: Revenue per MW rises 57% while capex rises only 46%, lifting gross IRR from 4.8% to 6.2%; capture rate also improves from 76% to 81%, as longer batteries are more forgiving of forecast error. But each cycle discharges twice the energy, so after cell wear the IRR moves only from 2.9% to 3.1% — most of the 4h advantage comes from higher throughput.
+- **2h / cycle cap 1**: Cycles fall 33% but revenue only 15% (the trades cut are the low-spread ones). Net of cell wear, revenue is still 11% lower, so the extra half-cycle each day earns more than the A$30/MWh degradation cost. A one-cycle-per-day warranty cuts gross IRR on a 2h battery from 4.8% to 1.6% — the cycling clause is worth a lot.
+- **4h / cycle cap 1**: With the same one-cycle cap, a 4h battery loses only 8% of gross revenue (245 → 226) and net revenue is unchanged (186 → 187), with lifetime IRR at 3.1% in both cases. One cycle already covers the evening peak, so the extra half-cycle only pays for its own wear: the warranty cap is nearly free for 4h but expensive for 2h.
+- **2h / cycle cap 1.5 / RTE 90%**: Raising round-trip efficiency from 86% to 90% adds A$4.6k/MW/yr (+2.9%) to the forecast-driven strategy, lifting gross IRR from 4.8% to 5.3% (and from 2.9% to 3.6% after cell wear). Under perfect foresight the gain is only 1.6%: efficiency matters most for the marginal, low-spread trades a realistic strategy takes. As a rough estimate, the extra revenue over 15 years is worth about A$3m in present value for 100 MW (~3% of capex) — roughly the most a buyer should pay for the higher-efficiency system.
 
-### 中国 · 独立储能 15 年现金流模型（114 号文容量电价）
+### China · 15-year cash-flow model for independent storage (Doc. 114 capacity price)
 
-| 场景（100 MW） | 容量电价（元/kW·年） | 第 1 年收入（万元） | 全投资税后 IRR | 资本金 IRR | 回收期 |
+| Case (100 MW) | Capacity price (CNY/kW·yr) | Year-1 revenue (CNY m) | Project IRR (post-tax) | Equity IRR | Payback |
 |---|---|---|---|---|---|
-| 对照：无容量电价 | 0.0 | 2,039 | 1.9% | -0.2% | 13.2 年 |
-| 山东 2h | 82.5 | 2,782 | 7.4% | 13.4% | 8.8 年 |
-| 山东 4h | 165.0 | 5,444 | 7.2% | 12.8% | 8.9 年 |
-| 甘肃 2h | 165.0 | 3,054 | 9.4% | 18.9% | 7.5 年 |
-| 广东 2h | 100.0 | 2,995 | 8.8% | 17.3% | 8.1 年 |
+| Reference: no capacity price | 0.0 | 20.4 | 1.9% | -0.2% | 13.2 yrs |
+| Shandong 2h | 82.5 | 27.8 | 7.4% | 13.4% | 8.8 yrs |
+| Shandong 4h | 165.0 | 54.4 | 7.2% | 12.8% | 8.9 yrs |
+| Gansu 2h | 165.0 | 30.5 | 9.4% | 18.9% | 7.5 yrs |
+| Guangdong 2h | 100.0 | 30.0 | 8.8% | 17.3% | 8.1 yrs |
 
-![各省对比](outputs/china/province_compare.png)
+![Province comparison](outputs/china/province_compare.png)
 
-没有容量电价时只靠套利 IRR 约 1.9%，山东 2h 加容量电价后 7.4%；龙卷风敏感性分析显示放电价差、循环次数、充电价格三个交易参数对 IRR 的影响最大，设备投资排第四。
+With arbitrage alone, project IRR is about 1.9%; adding the capacity price lifts a 2h project in Shandong to 7.4%. The tornado chart shows that three trading parameters — discharge spread, cycles per day and charging price — move IRR more than equipment capex, which ranks fourth.
 
-![山东敏感性](outputs/china/tornado_shandong_2h.png)
+![Shandong sensitivity](outputs/china/tornado_shandong_2h.png)
+
+> Capacity-price basis: Gansu uses its published coal capacity-price benchmark of CNY 330/kW·yr. Shandong is estimated from the national coal benchmark of CNY 165/kW·yr, and Guangdong's CNY 200/kW·yr is an unconfirmed market figure; both should be updated once the provinces publish storage-specific rules (see `bess_econ/china_irr/presets.py`).
 
 <!-- RESULTS:END -->
 
-## 方法
+## Method
 
 ```mermaid
 flowchart LR
-    A[AEMO 5 分钟电价<br/>PRICE_AND_DEMAND] --> B[清洗与校验<br/>区间结束时刻 → 交易日 × 288]
-    B --> C[市场画像<br/>负电价 · 日内价差 · 鸭子曲线]
-    B --> D[次日电价预测<br/>GBM 滚动训练]
-    B --> E[MILP 逐日调度<br/>SOC · 功率 · 效率 · 循环约束]
+    A[AEMO 5-min prices<br/>PRICE_AND_DEMAND] --> B[Clean & validate<br/>interval-ending → trading day × 288]
+    B --> C[Market profile<br/>negative prices · spreads · duck curve]
+    B --> D[Day-ahead price forecast<br/>GBM, walk-forward]
+    B --> E[Daily MILP dispatch<br/>SOC · power · efficiency · cycle limits]
     D --> E
-    E --> F[收益捕获率<br/>完美预知 / GBM / 昨日 / 固定时段]
-    E --> G[衰减权衡 · 时长对比]
-    F --> H[蒙特卡洛 IRR<br/>P10 / P50 / P90]
-    I[中国政策参数<br/>114 号文容量电价] --> J[15 年现金流 IRR<br/>各省对比 · 龙卷风图]
+    E --> F[Capture rate<br/>perfect / GBM / persistence / fixed]
+    E --> G[Degradation trade-off · duration]
+    F --> H[Monte Carlo IRR<br/>P10 / P50 / P90]
+    I[China policy inputs<br/>Doc. 114 capacity price] --> J[15-year cash-flow IRR<br/>province comparison · tornado]
 ```
 
-### 调度模型（`bess_econ/dispatch.py`）
+### Dispatch model (`bess_econ/dispatch.py`)
 
-每个交易日 288 个 5 分钟区间，决策变量为充电功率 c<sub>t</sub>、放电功率 d<sub>t</sub>、区间末储能量 s<sub>t</sub>：
+Each trading day has 288 five-minute intervals. Decision variables are charge power c<sub>t</sub>, discharge power d<sub>t</sub> and stored energy at the end of each interval s<sub>t</sub>:
 
-- 储能平衡：s<sub>t</sub> = s<sub>t−1</sub> + η·c<sub>t</sub>·Δt − d<sub>t</sub>·Δt / η，η = √RTE
-- 边界：0 ≤ c<sub>t</sub>, d<sub>t</sub> ≤ P；5% ≤ SOC ≤ 95%；日末 SOC 回到日初（日与日解耦）
-- 循环上限：每日等效满循环 ≤ 1.5（质保常见约束，可关）
-- 互斥：c<sub>t</sub> ≤ P·u<sub>t</sub>，d<sub>t</sub> ≤ P·(1 − u<sub>t</sub>)，u<sub>t</sub> ∈ {0,1}。不加互斥时，负电价下线性规划会利用往返损耗"空耗"电量套利，物理上不成立
-- 目标：max Σ p<sub>t</sub>·(d<sub>t</sub> − c<sub>t</sub>)·Δt − δ·Σ d<sub>t</sub>·Δt，δ 为单位放电量的衰减成本
+- Energy balance: s<sub>t</sub> = s<sub>t−1</sub> + η·c<sub>t</sub>·Δt − d<sub>t</sub>·Δt / η, with η = √RTE
+- Bounds: 0 ≤ c<sub>t</sub>, d<sub>t</sub> ≤ P; 5% ≤ SOC ≤ 95%; end-of-day SOC returns to its starting level (days are decoupled)
+- Cycle limit: at most 1.5 equivalent full cycles per day (a common warranty term; can be switched off)
+- Mutual exclusion: c<sub>t</sub> ≤ P·u<sub>t</sub>, d<sub>t</sub> ≤ P·(1 − u<sub>t</sub>), u<sub>t</sub> ∈ {0,1}. Without it, the LP relaxation charges and discharges at the same time during negative prices to burn energy through round-trip losses, which is not physically possible
+- Objective: max Σ p<sub>t</sub>·(d<sub>t</sub> − c<sub>t</sub>)·Δt − δ·Σ d<sub>t</sub>·Δt, where δ is the degradation cost per MWh discharged
 
-求解器 HiGHS（scipy.optimize.milp），每日约 0.1 秒。
+Solved with HiGHS (`scipy.optimize.milp`), about 0.1 s per day.
 
-### 电价预测（`bess_econ/forecast.py`）
+### Price forecast (`bess_econ/forecast.py`)
 
-D-1 日收盘时预测 D 日 288 个区间，特征只用 D-1 及更早数据：同时段 1/2/7 日滞后、7 日均值与中位数、前一日统计量（均值、波动、负电价占比）、滞后负荷、日内与年内周期变量。模型为 scikit-learn `HistGradientBoostingRegressor`，训练目标截断在 [−500, 1000] A$/MWh（尖峰不可预测，留在目标里只会拉偏模型），按月滚动重训。单元测试专门检查特征无未来数据泄漏。
+At the close of day D-1 the model forecasts all 288 intervals of day D, using only data from D-1 and earlier: same-interval lags at 1, 2 and 7 days, 7-day mean and median, previous-day statistics (mean, volatility, share of negative prices), lagged demand, and time-of-day and seasonal terms. The model is scikit-learn's `HistGradientBoostingRegressor`, with the training target clipped to [−500, 1000] A$/MWh (price spikes are not forecastable and only bias the fit), retrained monthly. A unit test checks that no feature uses future data.
 
-### 投资回报（`bess_econ/montecarlo.py`、`bess_econ/china_irr/`）
+### Investment returns (`bess_econ/montecarlo.py`, `bess_econ/china_irr/`)
 
-- **澳洲**：GBM 策略的逐日真实可实现收益 → 每年有放回抽样 365 天（保留尖峰事件的偶然性）× 市场乘数（对数正态）× 价差逐年压缩 × 容量衰减，投资成本按三角分布，15 年税前实际 IRR。
-- **中国**：15 年年度现金流，四类收益（电能量套利、容量电价、辅助服务、容量租赁），70% 贷款、折旧、三免三减半，输出全投资 / 资本金 IRR、LCOS、盈亏平衡收入和龙卷风敏感性。
+- **Australia:** daily realised revenue from the GBM strategy → each simulated year resamples 365 days with replacement (keeping the randomness of spike events) × a lognormal market multiplier × annual spread compression × capacity fade. Capex follows a triangular distribution; output is a 15-year pre-tax real IRR.
+- **China:** 15-year annual cash flow with four revenue streams (energy arbitrage, capacity price, ancillary services, capacity leasing), 70% debt, depreciation and the "3 years exempt, 3 years half-rate" tax holiday. Outputs project and equity IRR, LCOS, break-even revenue and a tornado sensitivity.
 
-## 用法
+## Usage
 
 ```bash
 pip install -r requirements.txt
 
-# 1. 下载澳洲数据（在能访问 aemo.com.au 的电脑上运行；默认 QLD1，2024-01 至 2025-12，24 个文件）
+# 1. Download Australian data (run on a machine that can reach aemo.com.au; default QLD1, Jan 2024 – Dec 2025, 24 files)
 python scripts/download_aemo.py
 
-# 2. 跑全流程（双核约 20 分钟，主要花在 11 次全年 MILP），结果在 outputs/nem/
+# 2. Run the full pipeline (about 20 min on two cores, mostly 11 full-year MILP runs); results go to outputs/nem/
 python run.py nem
 
-# 3. 情景实验：改一两个电池参数，和基准（2h / 1.5 循环）对比收益和 IRR，每个约 3–5 分钟
+# 3. Scenario experiments: change one or two battery parameters and compare revenue and IRR with the base case (2h / 1.5 cycles), 3–5 min each
 python run.py scenario --hours 4
-python run.py scenario --max-cycles 1.0 --note "一句话写下你的发现"
+python run.py scenario --max-cycles 1.0 --note "your finding in one sentence"
 python run.py scenario --rte 0.90 --capex 400 500 620
 
-# 4. 中国 IRR 模型
+# 4. China IRR model
 python run.py china all
 python run.py china evaluate --preset shandong --hours 2 --set rte=0.88
 
-# 5. 根据结果刷新 README 的结论区块（含情景实验表）
+# 5. Refresh the results sections of both READMEs (including the scenario table)
 python scripts/update_readme.py
 
-# 测试（18 个用例：时间戳约定、缺口与重复处理、能量守恒、互斥、无数据泄漏、IRR 数值等）
+# Tests (18 cases: timestamp convention, gaps and duplicates, energy conservation, mutual exclusion, no data leakage, IRR values, etc.)
 python -m pytest -q
 
-# 没有真实数据时，用合成数据验证流程（结论无效）
+# Without real data, check the pipeline on synthetic data (results are not meaningful)
 python run.py nem --demo
 ```
 
-## 关键假设与来源
+## Key assumptions and sources
 
-| 参数 | 取值 | 来源 |
+| Parameter | Value | Source |
 |---|---|---|
-| 电池 | 100 MW / 200 MWh，RTE 86%，SOC 5–95%，≤1.5 循环/天 | 行业常见规格（假设） |
-| 真实衰减成本 | 30 A$/MWh 放电量 | 按电芯更换成本 ÷ 循环寿命估算（假设） |
-| 澳洲 2h 储能投资 | 三角分布 A$420 / 520 / 650 每 kWh | CSIRO GenCost 2024-25 草案 4h 为 A$423/kWh，2025-26 终版称储能成本再降 11–16%；Origin Eraring 一期 460 MW/920 MWh 约 A$652/kWh（RenewEconomy 2024-12） |
-| 年固定运维 | 投资 × 1.5% | 假设 |
-| 价差逐年压缩 / 市场波动 | 3% / 年；对数标准差 0.30 | 假设，可调 |
-| NEM 电池收入基准 | 2024 年平均 A$149 千/MW/年（含 FCAS） | Modo Energy 2025-02 |
-| 中国参数 | 系统中标价、容量电价公式与各省标准、行业 IRR 区间 | 见 `bess_econ/china_irr/presets.py` 注释 |
+| Battery | 100 MW / 200 MWh, RTE 86%, SOC 5–95%, ≤1.5 cycles/day | Typical industry specification (assumption) |
+| True degradation cost | A$30/MWh discharged | Cell replacement cost ÷ cycle life (assumption) |
+| Australian 2h storage capex | Triangular A$420 / 520 / 650 per kWh | CSIRO GenCost 2024-25 draft: A$423/kWh for 4h; the 2025-26 final report cites a further 11–16% fall in storage costs; Origin's Eraring stage 1 (460 MW / 920 MWh) about A$652/kWh (RenewEconomy, Dec 2024) |
+| Fixed O&M | 1.5% of capex per year | Assumption |
+| Spread compression / market volatility | 3% a year; log standard deviation 0.30 | Assumption, adjustable |
+| NEM battery revenue benchmark | 2024 average A$149k/MW/yr (including FCAS) | Modo Energy, Feb 2025 |
+| China inputs | System tender prices, capacity-price formula and provincial benchmarks, industry IRR ranges | See comments in `bess_econ/china_irr/presets.py` |
 
-## 局限
+## Limitations
 
-- **只模拟能量套利**，没有 FCAS（调频）收益；NEM 电池实际收入中 FCAS 占相当比例，所以本模型对澳洲项目偏保守。
-- **价格接受者假设**：电池不影响电价；大规模储能并网后价差会被压缩（蒙特卡洛中用逐年压缩近似）。
-- **次日计划、不做日内修正**：真实运营会在 5 分钟预调度信息下滚动修正，GBM 捕获率是保守下限。
-- 不含网络约束、边际损耗系数（MLF）和并网费用；中国模型是年度口径，没有逐时调度。
+- **Energy arbitrage only.** FCAS (frequency control ancillary services) revenue is not modelled. FCAS is a meaningful share of actual NEM battery revenue, so the Australian results are conservative.
+- **Price-taker assumption.** The battery does not move prices. As more storage connects, spreads compress; the Monte Carlo approximates this with annual compression.
+- **Day-ahead schedule with no intraday re-optimisation.** Real operators re-dispatch on 5-minute pre-dispatch information, so the GBM capture rate is a conservative lower bound.
+- No network constraints, marginal loss factors (MLF) or connection charges. The China model is annual and has no interval-level dispatch.
 
-## 下一步
+## Roadmap
 
-- [ ] 加入 FCAS 联合优化（能量 + 调频共同出清）
-- [ ] 日内滚动优化（每 30 分钟用最新信息重排剩余区间）
-- [ ] 雨流计数法电池衰减模型，替代线性吞吐量成本
-- [ ] 换山东现货数据重跑，做中澳对比
+- [ ] Co-optimise energy and FCAS
+- [ ] Intraday rolling re-optimisation (re-plan the remaining intervals every 30 minutes with the latest information)
+- [ ] Rainflow-counting degradation model to replace the linear throughput cost
+- [ ] Re-run on Chinese provincial spot prices for an Australia–China comparison
 
-## 作者
+## Author
 
-马一鸣（Yiming Ma）· 昆士兰大学 机电工程学士（Hons）、可持续能源硕士在读 · [GitHub](https://github.com/StevenMa-creater)
+Yiming Ma (马一鸣) · BE (Hons) Mechatronic Engineering, University of Queensland · Master of Sustainable Energy candidate · [GitHub](https://github.com/StevenMa-creater)

@@ -1,7 +1,7 @@
 {
   "name": "rte_0.90",
   "label": "2h / 循环上限 1.5 / RTE 90%",
-  "note": "我试过把效率从 86% 提到 90%，发现每 MW 每年多赚 __ 千澳元，IRR 从 4.8% 升到 __%，说明……",
+  "note": "我把效率从 86% 提到 90%，GBM 策略每 MW 每年多赚 4.6 千澳元（+2.9%），毛收入 IRR 从 4.8% 升到 5.3%，计入电芯损耗后从 2.9% 升到 3.6%。完美预知下只多 1.6%，说明效率对预测不准时那些价差较小的边际交易更有价值。粗算 15 年，100 MW 项目多出的收入现值约 300 万澳元，约占投资的 3%，高效率系统的溢价不超过这个比例才值得选。",
   "region": "QLD1",
   "test_start": "2025-01-01",
   "test_days": 365,
@@ -62,5 +62,6 @@
     },
     "capex_mid_aud_m": 104.0,
     "breakeven_k_per_mw": 169.9499940868307
-  }
+  },
+  "note_en": "Raising round-trip efficiency from 86% to 90% adds A$4.6k/MW/yr (+2.9%) to the forecast-driven strategy, lifting gross IRR from 4.8% to 5.3% (and from 2.9% to 3.6% after cell wear). Under perfect foresight the gain is only 1.6%: efficiency matters most for the marginal, low-spread trades a realistic strategy takes. As a rough estimate, the extra revenue over 15 years is worth about A$3m in present value for 100 MW (~3% of capex) — roughly the most a buyer should pay for the higher-efficiency system."
 }

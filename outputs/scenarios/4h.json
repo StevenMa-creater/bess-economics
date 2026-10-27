@@ -1,0 +1,66 @@
+{
+  "name": "4h",
+  "label": "4h / 循环上限 1.5 / RTE 86%",
+  "note": "每 MW 收入多 57%，投资只多 46%，毛收入 IRR 从 4.8% 升到 6.2%；捕获率也从 76% 升到 81%，时长越长对预测误差越宽容。但每次循环放电量翻倍，计入电芯损耗后 IRR 只从 2.9% 到 3.1%，4h 的优势大部分来自更大的吞吐量。",
+  "region": "QLD1",
+  "test_start": "2025-01-01",
+  "test_days": 365,
+  "params": {
+    "hours": 4.0,
+    "max_cycles_per_day": 1.5,
+    "rte": 0.86,
+    "capex_aud_per_kwh": [
+      306.9,
+      380.0,
+      475.0
+    ]
+  },
+  "baseline": {
+    "perfect": {
+      "revenue_k_per_mw": 204.22055890287456,
+      "net_k_per_mw": 174.65555890287456,
+      "cycles_per_year": 547.4999999999998,
+      "capture_rate": 1.0
+    },
+    "gbm": {
+      "revenue_k_per_mw": 155.79943964127582,
+      "net_k_per_mw": 126.23492948177311,
+      "cycles_per_year": 547.4909288796796,
+      "capture_rate": 0.762897920161763
+    },
+    "irr": {
+      "gross_p10": 0.01563908641307666,
+      "gross_p50": 0.04768221332973104,
+      "gross_p90": 0.08438210842380585,
+      "gross_prob_above_hurdle": 0.1262,
+      "net_p50": 0.029283593346474537,
+      "net_prob_above_hurdle": 0.0284
+    },
+    "capex_mid_aud_m": 104.0,
+    "breakeven_k_per_mw": 169.9499940868307
+  },
+  "scenario": {
+    "perfect": {
+      "revenue_k_per_mw": 302.6624199543784,
+      "net_k_per_mw": 243.5451424145027,
+      "cycles_per_year": 547.3821994432938,
+      "capture_rate": 1.0
+    },
+    "gbm": {
+      "revenue_k_per_mw": 244.8933540761359,
+      "net_k_per_mw": 186.31109660384357,
+      "cycles_per_year": 542.4283099286326,
+      "capture_rate": 0.809130364162983
+    },
+    "irr": {
+      "gross_p10": 0.02981520990826189,
+      "gross_p50": 0.06237226697169438,
+      "gross_p90": 0.09999957433435148,
+      "gross_prob_above_hurdle": 0.2658,
+      "net_p50": 0.03115098283308394,
+      "net_prob_above_hurdle": 0.0298
+    },
+    "capex_mid_aud_m": 152.0,
+    "breakeven_k_per_mw": 248.38845289613707
+  }
+}

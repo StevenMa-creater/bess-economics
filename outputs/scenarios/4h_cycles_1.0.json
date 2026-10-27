@@ -1,0 +1,66 @@
+{
+  "name": "4h_cycles_1.0",
+  "label": "4h / 循环上限 1 / RTE 86%",
+  "note": "同样限到每天 1 次，4h 电池毛收入只少 8%（245 → 226），扣衰减净收入几乎不变（186 → 187），全寿命 IRR 都是 3.1%。4h 电池一次循环就能吃满傍晚高峰，多出的半次循环只够覆盖损耗，所以每天 1 次的质保对 4h 几乎没有代价，对 2h 却很贵。",
+  "region": "QLD1",
+  "test_start": "2025-01-01",
+  "test_days": 365,
+  "params": {
+    "hours": 4.0,
+    "max_cycles_per_day": 1.0,
+    "rte": 0.86,
+    "capex_aud_per_kwh": [
+      306.9,
+      380.0,
+      475.0
+    ]
+  },
+  "baseline": {
+    "perfect": {
+      "revenue_k_per_mw": 204.22055890287456,
+      "net_k_per_mw": 174.65555890287456,
+      "cycles_per_year": 547.4999999999998,
+      "capture_rate": 1.0
+    },
+    "gbm": {
+      "revenue_k_per_mw": 155.79943964127582,
+      "net_k_per_mw": 126.23492948177311,
+      "cycles_per_year": 547.4909288796796,
+      "capture_rate": 0.762897920161763
+    },
+    "irr": {
+      "gross_p10": 0.01563908641307666,
+      "gross_p50": 0.04768221332973104,
+      "gross_p90": 0.08438210842380585,
+      "gross_prob_above_hurdle": 0.1262,
+      "net_p50": 0.029283593346474537,
+      "net_prob_above_hurdle": 0.0284
+    },
+    "capex_mid_aud_m": 104.0,
+    "breakeven_k_per_mw": 169.9499940868307
+  },
+  "scenario": {
+    "perfect": {
+      "revenue_k_per_mw": 280.7847505371953,
+      "net_k_per_mw": 241.36525053719532,
+      "cycles_per_year": 364.99537037037044,
+      "capture_rate": 1.0
+    },
+    "gbm": {
+      "revenue_k_per_mw": 226.07272006502092,
+      "net_k_per_mw": 186.65272006502093,
+      "cycles_per_year": 365.00000000000006,
+      "capture_rate": 0.805146004661935
+    },
+    "irr": {
+      "gross_p10": 0.01526090873151533,
+      "gross_p50": 0.04629654277261052,
+      "gross_p90": 0.08133448925093485,
+      "gross_prob_above_hurdle": 0.1088,
+      "net_p50": 0.03137464069906258,
+      "net_prob_above_hurdle": 0.0274
+    },
+    "capex_mid_aud_m": 152.0,
+    "breakeven_k_per_mw": 248.38845289613707
+  }
+}

@@ -1,0 +1,8 @@
+numpy>=1.24
+pandas>=2.1
+scipy>=1.11
+scikit-learn>=1.3
+matplotlib>=3.7
+pyarrow>=14
+pytest>=7
+# 可选：nemosis（直接从 nemweb 下载 DISPATCHPRICE）

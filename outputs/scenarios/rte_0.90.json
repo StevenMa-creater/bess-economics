@@ -1,0 +1,66 @@
+{
+  "name": "rte_0.90",
+  "label": "2h / 循环上限 1.5 / RTE 90%",
+  "note": "我试过把效率从 86% 提到 90%，发现每 MW 每年多赚 __ 千澳元，IRR 从 4.8% 升到 __%，说明……",
+  "region": "QLD1",
+  "test_start": "2025-01-01",
+  "test_days": 365,
+  "params": {
+    "hours": 2.0,
+    "max_cycles_per_day": 1.5,
+    "rte": 0.9,
+    "capex_aud_per_kwh": [
+      420.0,
+      520.0,
+      650.0
+    ]
+  },
+  "baseline": {
+    "perfect": {
+      "revenue_k_per_mw": 204.22055890287456,
+      "net_k_per_mw": 174.65555890287456,
+      "cycles_per_year": 547.4999999999999,
+      "capture_rate": 1.0
+    },
+    "gbm": {
+      "revenue_k_per_mw": 155.79943964127582,
+      "net_k_per_mw": 126.23492948177311,
+      "cycles_per_year": 547.4909288796796,
+      "capture_rate": 0.762897920161763
+    },
+    "irr": {
+      "gross_p10": 0.01563908641307666,
+      "gross_p50": 0.04768221332973104,
+      "gross_p90": 0.08438210842380585,
+      "gross_prob_above_hurdle": 0.1262,
+      "net_p50": 0.029283593346474537,
+      "net_prob_above_hurdle": 0.0284
+    },
+    "capex_mid_aud_m": 104.0,
+    "breakeven_k_per_mw": 169.9499940868307
+  },
+  "scenario": {
+    "perfect": {
+      "revenue_k_per_mw": 207.45146850248122,
+      "net_k_per_mw": 177.8864685024812,
+      "cycles_per_year": 547.4999999999998,
+      "capture_rate": 1.0
+    },
+    "gbm": {
+      "revenue_k_per_mw": 160.3613990601225,
+      "net_k_per_mw": 130.79639906012252,
+      "cycles_per_year": 547.4999999999998,
+      "capture_rate": 0.7730068156071139
+    },
+    "irr": {
+      "gross_p10": 0.020951235506970152,
+      "gross_p50": 0.05342227740036613,
+      "gross_p90": 0.09082224980219615,
+      "gross_prob_above_hurdle": 0.1768,
+      "net_p50": 0.035688131506209,
+      "net_prob_above_hurdle": 0.0484
+    },
+    "capex_mid_aud_m": 104.0,
+    "breakeven_k_per_mw": 169.9499940868307
+  }
+}

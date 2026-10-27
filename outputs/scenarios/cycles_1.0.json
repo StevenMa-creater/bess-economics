@@ -1,0 +1,66 @@
+{
+  "name": "cycles_1.0",
+  "label": "2h / 循环上限 1 / RTE 86%",
+  "note": "循环少了 33%，收入只少 15%（砍掉的是价差较小的交易），但扣掉电芯损耗后净收入仍少 11%，说明每天第二个半次循环的价差高于 30 A$/MWh 的衰减成本。质保把 2h 电池限制在每天 1 次，毛收入 IRR 从 4.8% 掉到 1.6%，循环次数条款很值钱。",
+  "region": "QLD1",
+  "test_start": "2025-01-01",
+  "test_days": 365,
+  "params": {
+    "hours": 2.0,
+    "max_cycles_per_day": 1.0,
+    "rte": 0.86,
+    "capex_aud_per_kwh": [
+      420.0,
+      520.0,
+      650.0
+    ]
+  },
+  "baseline": {
+    "perfect": {
+      "revenue_k_per_mw": 204.22055890287456,
+      "net_k_per_mw": 174.65555890287456,
+      "cycles_per_year": 547.4999999999998,
+      "capture_rate": 1.0
+    },
+    "gbm": {
+      "revenue_k_per_mw": 155.79943964127582,
+      "net_k_per_mw": 126.23492948177311,
+      "cycles_per_year": 547.4909288796796,
+      "capture_rate": 0.762897920161763
+    },
+    "irr": {
+      "gross_p10": 0.01563908641307666,
+      "gross_p50": 0.04768221332973104,
+      "gross_p90": 0.08438210842380585,
+      "gross_prob_above_hurdle": 0.1262,
+      "net_p50": 0.029283593346474537,
+      "net_prob_above_hurdle": 0.0284
+    },
+    "capex_mid_aud_m": 104.0,
+    "breakeven_k_per_mw": 169.9499940868307
+  },
+  "scenario": {
+    "perfect": {
+      "revenue_k_per_mw": 180.78239666756696,
+      "net_k_per_mw": 161.07239666756698,
+      "cycles_per_year": 365.0,
+      "capture_rate": 1.0
+    },
+    "gbm": {
+      "revenue_k_per_mw": 132.1927798270433,
+      "net_k_per_mw": 112.4827798270433,
+      "cycles_per_year": 365.0,
+      "capture_rate": 0.7312259504454239
+    },
+    "irr": {
+      "gross_p10": -0.013029866888704934,
+      "gross_p50": 0.016261600318546565,
+      "gross_p90": 0.04895328262756631,
+      "gross_prob_above_hurdle": 0.0112,
+      "net_p50": 0.009168158674307206,
+      "net_prob_above_hurdle": 0.0034
+    },
+    "capex_mid_aud_m": 104.0,
+    "breakeven_k_per_mw": 169.9499940868307
+  }
+}

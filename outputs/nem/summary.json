@@ -1,0 +1,164 @@
+{
+  "data_source": "AEMO 公开数据",
+  "region": "QLD1",
+  "data": {
+    "days": 731,
+    "rows": 210528,
+    "first": "2024-01-01",
+    "last": "2025-12-31",
+    "rrp_min": -1000.0,
+    "rrp_max": 17500.0
+  },
+  "test_start": "2025-01-01",
+  "test_days": 365,
+  "battery": {
+    "power_mw": 100.0,
+    "energy_mwh": 200.0,
+    "rte": 0.86,
+    "max_cycles_per_day": 1.5
+  },
+  "market": {
+    "days": 365,
+    "mean": 84.88930213089803,
+    "median": 78.73,
+    "std": 319.1331410944516,
+    "p05": -26.140499999999992,
+    "p95": 199.28099999999978,
+    "negative_share": 0.20339611872146118,
+    "negative_hours_per_year": 1781.75,
+    "intervals_above_300": 726,
+    "intervals_above_5000": 72,
+    "min": -1000.0,
+    "max": 17304.0
+  },
+  "median_daily_spread_2h": 186.67416666666665,
+  "naive_estimate": {
+    "revenue_aud_per_year": 18019131.00833333,
+    "revenue_aud_per_mw_year": 180191.3100833333
+  },
+  "forecast_metrics": {
+    "gbm": {
+      "mae": 40.67368727004754,
+      "mae_clipped": 32.92271542834281,
+      "rmse": 308.1342831218201,
+      "intraday_rank_corr": 0.8454820032933995
+    },
+    "persistence": {
+      "mae": 49.75769216133942,
+      "mae_clipped": 43.447970319634706,
+      "rmse": 414.5039207843944,
+      "intraday_rank_corr": 0.7657510185091774
+    }
+  },
+  "strategies": {
+    "perfect": {
+      "name": "完美预知（上限）",
+      "revenue_aud_per_mw_year": 204220.55890287456,
+      "capture_rate": 1.0,
+      "cycles_per_year": 547.4999999999999,
+      "avg_spread_captured": 207.22532613178552
+    },
+    "gbm": {
+      "name": "GBM 预测 + 优化",
+      "revenue_aud_per_mw_year": 155799.43964127582,
+      "capture_rate": 0.762897920161763,
+      "cycles_per_year": 547.4909288796796,
+      "avg_spread_captured": 158.09438965914853
+    },
+    "persistence": {
+      "name": "昨日电价 + 优化",
+      "revenue_aud_per_mw_year": 127456.32551030749,
+      "capture_rate": 0.6241111384428468,
+      "cycles_per_year": 547.4999999999999,
+      "avg_spread_captured": 129.33163420629887
+    },
+    "fixed": {
+      "name": "固定时段规则",
+      "revenue_aud_per_mw_year": 138951.76905065478,
+      "capture_rate": 0.6804004934524686,
+      "cycles_per_year": 338.4870750855932,
+      "avg_spread_captured": 228.06019175427417
+    }
+  },
+  "degradation": [
+    {
+      "delta": 0,
+      "revenue_aud_per_mw_year": 225536.38721719186,
+      "cycles_per_year": 1377.0405164058443,
+      "net_of_true_degradation_per_mw_year": 151176.19933127626
+    },
+    {
+      "delta": 10,
+      "revenue_aud_per_mw_year": 221843.70305412353,
+      "cycles_per_year": 897.7365600314896,
+      "net_of_true_degradation_per_mw_year": 173365.92881242308
+    },
+    {
+      "delta": 25,
+      "revenue_aud_per_mw_year": 215410.55454617966,
+      "cycles_per_year": 676.1566283682763,
+      "net_of_true_degradation_per_mw_year": 178898.09661429274
+    },
+    {
+      "delta": 50,
+      "revenue_aud_per_mw_year": 204057.35825146976,
+      "cycles_per_year": 502.2384814716784,
+      "net_of_true_degradation_per_mw_year": 176936.48025199914
+    },
+    {
+      "delta": 100,
+      "revenue_aud_per_mw_year": 183401.2829707093,
+      "cycles_per_year": 343.78229736782316,
+      "net_of_true_degradation_per_mw_year": 164837.03891284682
+    }
+  ],
+  "durations": [
+    {
+      "duration_h": 1,
+      "revenue_aud_per_mw_year": 127569.34158055014,
+      "revenue_aud_per_mwh_year": 127569.34158055014,
+      "cycles_per_year": 547.5000000000001
+    },
+    {
+      "duration_h": 2,
+      "revenue_aud_per_mw_year": 204220.55890287456,
+      "revenue_aud_per_mwh_year": 102110.27945143728,
+      "cycles_per_year": 547.4999999999999
+    },
+    {
+      "duration_h": 4,
+      "revenue_aud_per_mw_year": 302662.4199543784,
+      "revenue_aud_per_mwh_year": 75665.6049885946,
+      "cycles_per_year": 547.3821994432938
+    }
+  ],
+  "au_assumptions": {
+    "power_mw": 100.0,
+    "duration_h": 2.0,
+    "capex_aud_per_kwh": [
+      420.0,
+      520.0,
+      650.0
+    ],
+    "fom_rate_of_capex": 0.015,
+    "life_years": 15,
+    "capacity_fade_per_year": 0.02,
+    "market_sigma": 0.3,
+    "cannibalisation_per_year": 0.03,
+    "other_revenue_aud_per_mw_year": 0.0,
+    "discount_rate": 0.07,
+    "hurdle": 0.08
+  },
+  "montecarlo": {
+    "n": 5000,
+    "irr_p10": 0.01563908641307666,
+    "irr_p50": 0.04768221332973104,
+    "irr_p90": 0.08438210842380585,
+    "irr_undefined_share": 0.0,
+    "prob_irr_above_hurdle": 0.1262,
+    "npv_p50_aud_m": -12.467762719728123,
+    "prob_npv_positive": 0.209,
+    "breakeven_revenue_aud_per_mw_year": 169949.9940868307
+  },
+  "example_day": "2025-09-02"
+}

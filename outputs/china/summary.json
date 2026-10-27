@@ -1,0 +1,146 @@
+{
+  "shandong_2h": {
+    "name": "山东·独立储能 100MW/200MWh",
+    "capex_wan": 18540.0,
+    "capacity_price": 82.5,
+    "revenue_year1_wan": 2781.9,
+    "irr_project_pretax": 0.08248950437568967,
+    "irr_project_posttax": 0.07370548807140039,
+    "irr_equity": 0.1337445735203437,
+    "npv_posttax_wan": -684.5,
+    "payback_project_years": 8.796068239120688,
+    "lcos_yuan_per_kwh": 0.372,
+    "breakeven_revenue_wan": 2576.6,
+    "efficiency_plus_1pp": {
+      "delta_lifetime_revenue_wan": 255.0,
+      "irr_base": 0.07370548807140039,
+      "irr_new": 0.07489238783795374
+    }
+  },
+  "shandong_4h": {
+    "name": "山东·独立储能 100MW/400MWh",
+    "capex_wan": 37080.0,
+    "capacity_price": 165.0,
+    "revenue_year1_wan": 5443.8,
+    "irr_project_pretax": 0.08021746565796548,
+    "irr_project_posttax": 0.07163189758467753,
+    "irr_equity": 0.12818400631191257,
+    "npv_posttax_wan": -1816.2,
+    "payback_project_years": 8.91029317386719,
+    "lcos_yuan_per_kwh": 0.368,
+    "breakeven_revenue_wan": 5095.6,
+    "efficiency_plus_1pp": {
+      "delta_lifetime_revenue_wan": 509.0,
+      "irr_base": 0.07163189758467753,
+      "irr_new": 0.0728234029647683
+    }
+  },
+  "gansu_2h": {
+    "name": "甘肃·独立储能 100MW/200MWh",
+    "capex_wan": 18540.0,
+    "capacity_price": 165.0,
+    "revenue_year1_wan": 3053.7,
+    "irr_project_pretax": 0.10488825828226253,
+    "irr_project_posttax": 0.0942148391656519,
+    "irr_equity": 0.189407399798365,
+    "npv_posttax_wan": 1581.0,
+    "payback_project_years": 7.5297245902960315,
+    "lcos_yuan_per_kwh": 0.389,
+    "breakeven_revenue_wan": 2536.8,
+    "efficiency_plus_1pp": {
+      "delta_lifetime_revenue_wan": 135.0,
+      "irr_base": 0.0942148391656519,
+      "irr_new": 0.09482198700436129
+    }
+  },
+  "gansu_4h": {
+    "name": "甘肃·独立储能 100MW/400MWh",
+    "capex_wan": 37080.0,
+    "capacity_price": 330.0,
+    "revenue_year1_wan": 5957.4,
+    "irr_project_pretax": 0.10166328013870043,
+    "irr_project_posttax": 0.09122820140693419,
+    "irr_equity": 0.1810562262146777,
+    "npv_posttax_wan": 2491.2,
+    "payback_project_years": 7.823524836404456,
+    "lcos_yuan_per_kwh": 0.384,
+    "breakeven_revenue_wan": 5015.7,
+    "efficiency_plus_1pp": {
+      "delta_lifetime_revenue_wan": 271.0,
+      "irr_base": 0.09122820140693419,
+      "irr_new": 0.09183821152042582
+    }
+  },
+  "guangdong_2h": {
+    "name": "广东·独立储能 100MW/200MWh",
+    "capex_wan": 18540.0,
+    "capacity_price": 100.0,
+    "revenue_year1_wan": 2995.3,
+    "irr_project_pretax": 0.09817063230591881,
+    "irr_project_posttax": 0.08810942138432437,
+    "irr_equity": 0.1731863473809062,
+    "npv_posttax_wan": 893.7,
+    "payback_project_years": 8.066249551664342,
+    "lcos_yuan_per_kwh": 0.475,
+    "breakeven_revenue_wan": 2569.3,
+    "efficiency_plus_1pp": {
+      "delta_lifetime_revenue_wan": 377.0,
+      "irr_base": 0.08810942138432437,
+      "irr_new": 0.08981992490036647
+    }
+  },
+  "guangdong_4h": {
+    "name": "广东·独立储能 100MW/400MWh",
+    "capex_wan": 37080.0,
+    "capacity_price": 200.0,
+    "revenue_year1_wan": 5840.5,
+    "irr_project_pretax": 0.09488384809737452,
+    "irr_project_posttax": 0.08507940132332806,
+    "irr_equity": 0.16478635897818092,
+    "npv_posttax_wan": 1116.4,
+    "payback_project_years": 8.21098431252152,
+    "lcos_yuan_per_kwh": 0.47,
+    "breakeven_revenue_wan": 5081.8,
+    "efficiency_plus_1pp": {
+      "delta_lifetime_revenue_wan": 753.0,
+      "irr_base": 0.08507940132332806,
+      "irr_new": 0.08679855465075888
+    }
+  },
+  "no_capacity_price_2h": {
+    "name": "对照·无容量电价 100MW/200MWh",
+    "capex_wan": 18540.0,
+    "capacity_price": 0.0,
+    "revenue_year1_wan": 2039.4,
+    "irr_project_pretax": 0.021329119490628733,
+    "irr_project_posttax": 0.01908448840102665,
+    "irr_equity": -0.0024125186874061864,
+    "npv_posttax_wan": -6235.8,
+    "payback_project_years": 13.196903199004236,
+    "lcos_yuan_per_kwh": 0.372,
+    "breakeven_revenue_wan": 2622.4,
+    "efficiency_plus_1pp": {
+      "delta_lifetime_revenue_wan": 255.0,
+      "irr_base": 0.01908448840102665,
+      "irr_new": 0.020495555033648995
+    }
+  },
+  "no_capacity_price_4h": {
+    "name": "对照·无容量电价 100MW/400MWh",
+    "capex_wan": 37080.0,
+    "capacity_price": 0.0,
+    "revenue_year1_wan": 3958.8,
+    "irr_project_pretax": 0.018577907025180602,
+    "irr_project_posttax": 0.016591025336729227,
+    "irr_equity": -0.008097138149601044,
+    "npv_posttax_wan": -12943.0,
+    "payback_project_years": 13.491219177002078,
+    "lcos_yuan_per_kwh": 0.368,
+    "breakeven_revenue_wan": 5191.3,
+    "efficiency_plus_1pp": {
+      "delta_lifetime_revenue_wan": 509.0,
+      "irr_base": 0.016591025336729227,
+      "irr_new": 0.018011558187026815
+    }
+  }
+}

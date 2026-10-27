@@ -1,6 +1,7 @@
 """敏感性分析与图表。"""
 from __future__ import annotations
 
+from contextlib import contextmanager
 from pathlib import Path
 
 import matplotlib
@@ -32,6 +33,28 @@ FACTORS = [
 ]
 
 
+FACTOR_EN = {
+    "系统效率 RTE ±2pp": "Round-trip efficiency ±2 pp",
+    "放电电价 ±0.10 元/kWh": "Discharge price ±0.10 CNY/kWh",
+    "充电电价 ±0.05 元/kWh": "Charging price ±0.05 CNY/kWh",
+    "日循环次数 ±0.3": "Cycles per day ±0.3",
+    "初始投资 ±10%": "Capex ±10%",
+    "容量电价考核 70% / 100%": "Capacity-price compliance 70% / 100%",
+    "年衰减 3.5% / 1.5%": "Annual degradation 3.5% / 1.5%",
+    "贷款利率 4.5% / 2.5%": "Loan rate 4.5% / 2.5%",
+}
+PRESET_EN = {"shandong": "Shandong", "gansu": "Gansu", "guangdong": "Guangdong", "no_capacity_price": "No capacity price"}
+
+
+@contextmanager
+def _style(lang: str):
+    if lang == "en":
+        with plt.rc_context({"font.family": "DejaVu Sans"}):
+            yield
+    else:
+        yield
+
+
 def _apply(a: Assumptions, param: str, val: float, mode: str) -> Assumptions:
     cur = getattr(a, param)
     if mode == "abs":
@@ -51,7 +74,13 @@ def tornado(a: Assumptions, metric: str = "irr_project_posttax") -> pd.DataFrame
     return pd.DataFrame(rows).sort_values("swing", ascending=True)
 
 
-def plot_tornado(df: pd.DataFrame, title: str, path: Path) -> None:
+def plot_tornado(df: pd.DataFrame, title: str, path: Path, lang: str = "zh") -> None:
+    with _style(lang):
+        _plot_tornado(df, title, path, lang)
+
+
+def _plot_tornado(df: pd.DataFrame, title: str, path: Path, lang: str) -> None:
+    en = lang == "en"
     fig, ax = plt.subplots(figsize=(8, 4.8))
     base = df.base.iloc[0] * 100
     y = np.arange(len(df))
@@ -65,11 +94,16 @@ def plot_tornado(df: pd.DataFrame, title: str, path: Path) -> None:
     lo_all, hi_all = min(df.low.min(), df.high.min()) * 100, max(df.low.max(), df.high.max()) * 100
     ax.set_xlim(lo_all - 1.5, hi_all + 1.5)
     ax.set_yticks(y)
-    ax.set_yticklabels(df.factor)
-    ax.set_xlabel("全投资税后 IRR（%）")
-    ax.set_title(f"{title}\n基准 IRR {base:.1f}%，红=不利，蓝=有利")
+    ax.set_yticklabels([FACTOR_EN.get(f, f) for f in df.factor] if en else df.factor)
+    if en:
+        ax.set_xlabel("Project IRR, post-tax (%)")
+        ax.set_title(f"{title}\nBase IRR {base:.1f}%; red = downside, blue = upside")
+    else:
+        ax.set_xlabel("全投资税后 IRR（%）")
+        ax.set_title(f"{title}\n基准 IRR {base:.1f}%，红=不利，蓝=有利")
     ax.grid(axis="x", alpha=0.3)
     fig.tight_layout()
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=160)
     plt.close(fig)
 
@@ -91,7 +125,13 @@ def province_compare(presets: dict[str, Assumptions], durations=(2.0, 4.0), powe
     return pd.DataFrame(rows)
 
 
-def plot_compare(df: pd.DataFrame, path: Path, hurdle: float = 0.06) -> None:
+def plot_compare(df: pd.DataFrame, path: Path, hurdle: float = 0.06, lang: str = "zh") -> None:
+    with _style(lang):
+        _plot_compare(df, path, hurdle, lang)
+
+
+def _plot_compare(df: pd.DataFrame, path: Path, hurdle: float, lang: str) -> None:
+    en = lang == "en"
     fig, ax = plt.subplots(figsize=(8, 4.5))
     names = df.name.unique()
     x = np.arange(len(names))
@@ -99,18 +139,25 @@ def plot_compare(df: pd.DataFrame, path: Path, hurdle: float = 0.06) -> None:
     for j, d in enumerate(sorted(df.duration_h.unique())):
         sub = df[df.duration_h == d].set_index("name").loc[names]
         vals = sub.irr_posttax * 100
-        bars = ax.bar(x + (j - 0.5) * w, vals, w, label=f"{d:.0f}h 系统",
+        bars = ax.bar(x + (j - 0.5) * w, vals, w, label=f"{d:.0f}h system" if en else f"{d:.0f}h 系统",
                       color="#2A4EC2" if j else "#9FB3E8")
         for b_, v in zip(bars, vals):
             ax.text(b_.get_x() + b_.get_width() / 2, v + 0.15, f"{v:.1f}", ha="center", fontsize=8)
-    ax.axhline(hurdle * 100, color="#B5382A", ls="--", lw=1, label=f"门槛 {hurdle*100:.0f}%")
+    ax.axhline(hurdle * 100, color="#B5382A", ls="--", lw=1, label=f"Hurdle {hurdle*100:.0f}%" if en else f"门槛 {hurdle*100:.0f}%")
     ax.set_xticks(x)
-    ax.set_xticklabels(names)
-    ax.set_ylabel("全投资税后 IRR（%）")
-    ax.set_title("100 MW 独立储能：各省 / 时长 IRR 对比（2026 年参数）")
+    if en:
+        key = df.drop_duplicates("name").set_index("name").preset
+        ax.set_xticklabels([PRESET_EN.get(key[n], n) for n in names])
+        ax.set_ylabel("Project IRR, post-tax (%)")
+        ax.set_title("100 MW independent storage: IRR by province and duration (2026 inputs)")
+    else:
+        ax.set_xticklabels(names)
+        ax.set_ylabel("全投资税后 IRR（%）")
+        ax.set_title("100 MW 独立储能：各省 / 时长 IRR 对比（2026 年参数）")
     ax.legend(fontsize=8)
     ax.grid(axis="y", alpha=0.3)
     fig.tight_layout()
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=160)
     plt.close(fig)
 

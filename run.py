@@ -5,6 +5,7 @@
   python run.py nem-urls --start 2024-01 --end 2026-01        # 打印要下载的 24 个链接
   python run.py nem                                            # 全流程，结果在 outputs/nem/
   python run.py nem --demo                                     # 用合成数据验证流程（结论无效）
+  python run.py charts                                         # 只重画图（中文 outputs/nem/，英文 outputs/nem/en/）
 
 情景实验（改一两个参数，和基准 2h / 1.5 循环对比；先跑过 nem）：
   python run.py scenario --hours 4
@@ -47,6 +48,13 @@ def cmd_nem(a):
         pipeline.run(ROOT / "data" / "raw", ROOT / "outputs" / "nem", a.region, a.test_start, synthetic=False, mc_runs=a.mc)
 
 
+def cmd_charts(a):
+    from bess_econ import redraw
+    out = ROOT / "outputs" / ("nem_demo" if a.demo else "nem")
+    for lang in a.lang:
+        redraw.nem_charts(out, lang)
+
+
 def cmd_scenario(a):
     from bess_econ import scenario
     note = a.note
@@ -60,10 +68,20 @@ def cmd_scenario(a):
 def _china(a):
     from bess_econ.china_irr import presets
     from bess_econ.china_irr.model import build_cashflow, evaluate
-    from bess_econ.china_irr.sensitivity import (efficiency_value, plot_compare, plot_tornado,
+    from bess_econ.china_irr.sensitivity import (PRESET_EN, efficiency_value, plot_compare, plot_tornado,
                                                  province_compare, tornado)
     out = ROOT / "outputs" / "china"
     out.mkdir(parents=True, exist_ok=True)
+    def compare_charts(df):
+        plot_compare(df, out / "province_compare.png")
+        plot_compare(df, out / "en" / "province_compare.png", lang="en")
+
+    def tornado_charts(df, preset, b):
+        f = f"tornado_{preset}_{b.duration_h:.0f}h.png"
+        plot_tornado(df, b.name, out / f)
+        title = f"{PRESET_EN.get(preset, preset)} independent storage {b.power_mw:.0f} MW / {b.power_mw * b.duration_h:.0f} MWh"
+        plot_tornado(df, title, out / "en" / f, lang="en")
+
     pct = lambda x: "n/a" if pd.isna(x) else f"{x*100:.2f}%"
 
     def build(preset, hours, mw, sets):
@@ -90,13 +108,13 @@ def _china(a):
     elif a.china_cmd == "compare":
         df = province_compare(presets.PRESETS, power_mw=a.mw)
         df.round(4).to_csv(out / "province_compare.csv", index=False)
-        plot_compare(df, out / "province_compare.png")
+        compare_charts(df)
         print(df[["name", "duration_h", "capacity_price", "revenue_y1_wan", "irr_posttax", "irr_equity", "payback"]].to_string(index=False))
     elif a.china_cmd == "sensitivity":
         b = build(a.preset, a.hours, a.mw, a.set)
         df = tornado(b)
         df.round(4).to_csv(out / f"tornado_{a.preset}_{b.duration_h:.0f}h.csv", index=False)
-        plot_tornado(df, b.name, out / f"tornado_{a.preset}_{b.duration_h:.0f}h.png")
+        tornado_charts(df, a.preset, b)
         print(df.to_string(index=False))
     elif a.china_cmd == "all":
         summary = {}
@@ -106,10 +124,10 @@ def _china(a):
                 summary[f"{p}_{h:.0f}h"] = {**r.as_row(), "efficiency_plus_1pp": ev}
         df = province_compare(presets.PRESETS)
         df.round(4).to_csv(out / "province_compare.csv", index=False)
-        plot_compare(df, out / "province_compare.png")
+        compare_charts(df)
         for h in (2.0, 4.0):
             b = presets.get("shandong", duration_h=h, power_mw=100.0)
-            plot_tornado(tornado(b), b.name, out / f"tornado_shandong_{h:.0f}h.png")
+            tornado_charts(tornado(b), "shandong", b)
         (out / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2, default=float), encoding="utf-8")
 
 
@@ -122,6 +140,10 @@ def main():
 
     sp = sub.add_parser("nem"); sp.add_argument("--region", default="QLD1"); sp.add_argument("--test-start", default=None)
     sp.add_argument("--demo", action="store_true"); sp.add_argument("--mc", type=int, default=5000); sp.set_defaults(fn=cmd_nem)
+
+    sp = sub.add_parser("charts", help="用已保存的结果重画 NEM 图表（不需要原始电价）")
+    sp.add_argument("--lang", nargs="+", default=["zh", "en"], choices=["zh", "en"])
+    sp.add_argument("--demo", action="store_true"); sp.set_defaults(fn=cmd_charts)
 
     sp = sub.add_parser("scenario", help="情景实验：改电池参数，和基准对比收益与 IRR")
     sp.add_argument("--hours", type=float, default=2.0, help="储能时长（小时），基准 2")

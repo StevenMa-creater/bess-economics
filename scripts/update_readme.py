@@ -124,9 +124,10 @@ STRATEGY_EN = {"perfect": "Perfect foresight (upper bound)", "gbm": "GBM forecas
                "persistence": "Yesterday's prices + optimiser", "fixed": "Fixed-schedule rule"}
 
 
-def nem_block_en(s: dict, img: str) -> str:
+def nem_block_en(s: dict, data_dir: str) -> str:
     import pandas as pd
-    perf = pd.read_csv(ROOT / img / "daily_perfect.csv", index_col=0, parse_dates=True).revenue
+    img = f"{data_dir}/en"  # 英文图在 outputs/nem/en/
+    perf = pd.read_csv(ROOT / data_dir / "daily_perfect.csv", index_col=0, parse_dates=True).revenue
     top = perf.sort_values(ascending=False)
     top5_share = top.head(5).sum() / perf.sum()
     top_day = top.index[0].strftime("%Y-%m-%d")
@@ -222,11 +223,11 @@ def china_block_en(s: dict) -> str:
         r = s[key]
         lines.append(f"| {name} | {r['capacity_price']:.1f} | {r['revenue_year1_wan']/100:,.1f} | {pct(r['irr_project_posttax'],1)} | "
                      f"{pct(r['irr_equity'],1)} | {r['payback_project_years']:.1f} yrs |")
-    lines += ["", "![Province comparison](outputs/china/province_compare.png)", "",
+    lines += ["", "![Province comparison](outputs/china/en/province_compare.png)", "",
               f"With arbitrage alone, project IRR is about {pct(s['no_capacity_price_2h']['irr_project_posttax'],1)}; adding the capacity price lifts "
               f"a 2h project in Shandong to {pct(s['shandong_2h']['irr_project_posttax'],1)}. The tornado chart shows that three trading parameters — "
               "discharge spread, cycles per day and charging price — move IRR more than equipment capex, which ranks fourth.",
-              "", "![Shandong sensitivity](outputs/china/tornado_shandong_2h.png)", "",
+              "", "![Shandong sensitivity](outputs/china/en/tornado_shandong_2h.png)", "",
               "> Capacity-price basis: Gansu uses its published coal capacity-price benchmark of CNY 330/kW·yr. Shandong is estimated from the national "
               "coal benchmark of CNY 165/kW·yr, and Guangdong's CNY 200/kW·yr is an unconfirmed market figure; both should be updated once the "
               "provinces publish storage-specific rules (see `bess_econ/china_irr/presets.py`).", ""]

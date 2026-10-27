@@ -10,8 +10,6 @@ An open-source toolkit for grid-scale battery energy storage (BESS) economics, b
 
 ## Results at a glance
 
-*Chart labels are in Chinese.*
-
 <!-- RESULTS:START -->
 ### Australia NEM · QLD1 · 2025 backtest (365 days, 5-minute prices)
 
@@ -22,7 +20,7 @@ An open-source toolkit for grid-scale battery energy storage (BESS) economics, b
 | Yesterday's prices + optimiser | 127 | 62% | 547 |
 | Fixed-schedule rule | 139 | 68% | 338 |
 
-![Strategy comparison](outputs/nem/03_strategy_capture.png)
+![Strategy comparison](outputs/nem/en/03_strategy_capture.png)
 
 **Key findings**
 
@@ -35,13 +33,13 @@ An open-source toolkit for grid-scale battery energy storage (BESS) economics, b
 
 <details><summary>More charts</summary>
 
-![Duck curve](outputs/nem/01_duck_curve.png)
-![Daily spread](outputs/nem/02_daily_spread.png)
-![Cumulative revenue](outputs/nem/04_cumulative_revenue.png)
-![Example day](outputs/nem/05_example_day.png)
-![Degradation trade-off](outputs/nem/06_degradation_tradeoff.png)
-![Duration](outputs/nem/07_duration.png)
-![IRR distribution](outputs/nem/08_irr_distribution.png)
+![Duck curve](outputs/nem/en/01_duck_curve.png)
+![Daily spread](outputs/nem/en/02_daily_spread.png)
+![Cumulative revenue](outputs/nem/en/04_cumulative_revenue.png)
+![Example day](outputs/nem/en/05_example_day.png)
+![Degradation trade-off](outputs/nem/en/06_degradation_tradeoff.png)
+![Duration](outputs/nem/en/07_duration.png)
+![IRR distribution](outputs/nem/en/08_irr_distribution.png)
 
 </details>
 
@@ -76,11 +74,11 @@ Revenue in A$k/MW/yr. Net of cell wear = revenue − A$30 per MWh discharged. Gr
 | Gansu 2h | 165.0 | 30.5 | 9.4% | 18.9% | 7.5 yrs |
 | Guangdong 2h | 100.0 | 30.0 | 8.8% | 17.3% | 8.1 yrs |
 
-![Province comparison](outputs/china/province_compare.png)
+![Province comparison](outputs/china/en/province_compare.png)
 
 With arbitrage alone, project IRR is about 1.9%; adding the capacity price lifts a 2h project in Shandong to 7.4%. The tornado chart shows that three trading parameters — discharge spread, cycles per day and charging price — move IRR more than equipment capex, which ranks fourth.
 
-![Shandong sensitivity](outputs/china/tornado_shandong_2h.png)
+![Shandong sensitivity](outputs/china/en/tornado_shandong_2h.png)
 
 > Capacity-price basis: Gansu uses its published coal capacity-price benchmark of CNY 330/kW·yr. Shandong is estimated from the national coal benchmark of CNY 165/kW·yr, and Guangdong's CNY 200/kW·yr is an unconfirmed market figure; both should be updated once the provinces publish storage-specific rules (see `bess_econ/china_irr/presets.py`).
 

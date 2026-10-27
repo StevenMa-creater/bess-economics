@@ -62,5 +62,6 @@
     },
     "capex_mid_aud_m": 104.0,
     "breakeven_k_per_mw": 169.9499940868307
-  }
+  },
+  "note_en": "Cycles fall 33% but revenue only 15% (the trades cut are the low-spread ones). Net of cell wear, revenue is still 11% lower, so the extra half-cycle each day earns more than the A$30/MWh degradation cost. A one-cycle-per-day warranty cuts gross IRR on a 2h battery from 4.8% to 1.6% — the cycling clause is worth a lot."
 }

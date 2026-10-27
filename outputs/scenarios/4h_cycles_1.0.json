@@ -62,5 +62,6 @@
     },
     "capex_mid_aud_m": 152.0,
     "breakeven_k_per_mw": 248.38845289613707
-  }
+  },
+  "note_en": "With the same one-cycle cap, a 4h battery loses only 8% of gross revenue (245 → 226) and net revenue is unchanged (186 → 187), with lifetime IRR at 3.1% in both cases. One cycle already covers the evening peak, so the extra half-cycle only pays for its own wear: the warranty cap is nearly free for 4h but expensive for 2h."
 }

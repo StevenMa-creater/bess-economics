@@ -136,7 +136,7 @@ def _load_scenario_daily(out: Path, name: str, params: dict, n_days: int):
 
 
 def run(root: Path, hours: float = 2.0, max_cycles: float | None = 1.5, rte: float = 0.86,
-        capex: tuple | None = None, name: str | None = None, note: str = "", region: str = "QLD1",
+        capex: tuple | None = None, name: str | None = None, note: str = "", note_en: str = "", region: str = "QLD1",
         test_start: str | None = None, mc_runs: int = 5000, log=print) -> dict:
     P, pred = load_inputs(root, region, test_start, log)
     actual = P.loc[pred.index]
@@ -167,7 +167,12 @@ def run(root: Path, hours: float = 2.0, max_cycles: float | None = 1.5, rte: flo
         log("[调度] 已有同参数的逐日结果，直接读取")
     scen = metrics(daily, b, au, mc_runs)
 
-    result = dict(name=name, label=label, note=note, region=region, test_start=str(pred.index.min().date()),
+    old = out / f"{name}.json"
+    if old.exists():  # 只重跑数字时保留已经写好的中英文发现
+        prev = json.loads(old.read_text(encoding="utf-8"))
+        note = note or prev.get("note", "")
+        note_en = note_en or prev.get("note_en", "")
+    result = dict(name=name, label=label, note=note, note_en=note_en, region=region, test_start=str(pred.index.min().date()),
                   test_days=int(len(actual)),
                   params={**params, "capex_aud_per_kwh": list(au.capex_aud_per_kwh)},
                   baseline=base, scenario=scen)

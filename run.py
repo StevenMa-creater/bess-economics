@@ -53,7 +53,7 @@ def cmd_scenario(a):
     if a.note_file and Path(a.note_file).exists():
         note = Path(a.note_file).read_text(encoding="utf-8-sig").strip()
     scenario.run(ROOT, hours=a.hours, max_cycles=a.max_cycles, rte=a.rte, capex=a.capex, name=a.name,
-                 note=note, region=a.region, test_start=a.test_start, mc_runs=a.mc)
+                 note=note, note_en=a.note_en, region=a.region, test_start=a.test_start, mc_runs=a.mc)
 
 
 # --------------------------------------------------------------------------- China
@@ -133,6 +133,7 @@ def main():
     sp.add_argument("--name", default=None, help="结果文件名，不填自动生成")
     sp.add_argument("--note", default="", help="你的一句话发现，会写进 README")
     sp.add_argument("--note-file", default=None, help="从文本文件读取发现（UTF-8）")
+    sp.add_argument("--note-en", default="", help="英文版发现，写进英文 README（README.md）")
     sp.add_argument("--region", default="QLD1"); sp.add_argument("--test-start", default=None)
     sp.add_argument("--mc", type=int, default=5000); sp.set_defaults(fn=cmd_scenario)
 

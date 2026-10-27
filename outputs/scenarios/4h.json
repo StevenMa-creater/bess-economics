@@ -62,5 +62,6 @@
     },
     "capex_mid_aud_m": 152.0,
     "breakeven_k_per_mw": 248.38845289613707
-  }
+  },
+  "note_en": "Revenue per MW rises 57% while capex rises only 46%, lifting gross IRR from 4.8% to 6.2%; capture rate also improves from 76% to 81%, as longer batteries are more forgiving of forecast error. But each cycle discharges twice the energy, so after cell wear the IRR moves only from 2.9% to 3.1% — most of the 4h advantage comes from higher throughput."
 }

@@ -16,6 +16,12 @@
   python run.py china compare
   python run.py china sensitivity --preset shandong --hours 2
   python run.py china all
+
+SQL 分析（SQLite 数据库，查询库在 sql/ 目录）：
+  python run.py sql build                                      # 建库 + 数据质量检查 → data/bess.sqlite
+  python run.py sql run --level 1                              # 执行 sql/01_basics.sql，结果存 outputs/sql/
+  python run.py sql run --level all                            # 三级查询全部执行
+  python run.py sql query "SELECT COUNT(*) FROM fact_price"    # 执行任意一条 SQL
 """
 from __future__ import annotations
 
@@ -62,6 +68,58 @@ def cmd_scenario(a):
         note = Path(a.note_file).read_text(encoding="utf-8-sig").strip()
     scenario.run(ROOT, hours=a.hours, max_cycles=a.max_cycles, rte=a.rte, capex=a.capex, name=a.name,
                  note=note, note_en=a.note_en, region=a.region, test_start=a.test_start, mc_runs=a.mc)
+
+
+# --------------------------------------------------------------------------- SQL
+DB_PATH = ROOT / "data" / "bess.sqlite"
+
+
+def _sql_conn(a):
+    from bess_econ.sql import db
+    path = Path(a.db)
+    if not path.exists():
+        raise SystemExit(f"找不到数据库 {path}，请先运行：python run.py sql build")
+    return db.connect(path)
+
+
+def cmd_sql(a):
+    # Windows 控制台编码不是 UTF-8 时，遇到无法显示的字符用 ? 代替，而不是报错退出
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="replace")
+    if a.sql_cmd == "build":
+        from bess_econ.sql import db
+        res = db.build(Path(a.db), Path(a.raw), ROOT / "outputs", a.region)
+        if not res["quality_passed"]:
+            raise SystemExit(1)
+        return
+    from bess_econ.sql import runner
+    conn = _sql_conn(a)
+    try:
+        if a.sql_cmd == "run":
+            levels = [1, 2, 3] if a.level == "all" else [int(a.level)]
+            runner.run_levels(conn, ROOT / "sql", levels, ROOT / "outputs" / "sql", max_rows=a.rows)
+            print(f"\n结果已保存到 {ROOT / 'outputs' / 'sql'}（CSV，可以直接用 Excel 打开）")
+        elif a.sql_cmd == "query":
+            import sqlite3
+            try:
+                df = runner.execute(conn, a.sql)
+            except sqlite3.Error as e:
+                raise SystemExit(f"SQL 报错：{e}")
+            if df is None:
+                print("执行完成（没有返回结果）。")
+                return
+            with pd.option_context("display.max_columns", 30, "display.width", 200):
+                print(df.head(a.rows).to_string(index=False))
+            if len(df) > a.rows:
+                print(f"…（共 {len(df):,} 行，只显示前 {a.rows} 行；用 --save 保存完整结果）")
+            if a.save:
+                out = ROOT / "outputs" / "sql" / f"{a.save}.csv"
+                out.parent.mkdir(parents=True, exist_ok=True)
+                df.to_csv(out, index=False, encoding="utf-8-sig")
+                print(f"已保存 {out}")
+    finally:
+        conn.close()
 
 
 # --------------------------------------------------------------------------- China
@@ -168,6 +226,17 @@ def main():
     c = csub.add_parser("compare"); c.add_argument("--mw", type=float, default=100.0)
     csub.add_parser("all")
     sp.set_defaults(fn=_china)
+
+    sp = sub.add_parser("sql", help="SQL 分析：建库、执行查询库、执行任意 SQL")
+    sp.add_argument("--db", default=str(DB_PATH), help="数据库文件，默认 data/bess.sqlite")
+    ssub = sp.add_subparsers(dest="sql_cmd", required=True)
+    c = ssub.add_parser("build", help="建库 + 数据质量检查"); c.add_argument("--region", default="QLD1")
+    c.add_argument("--raw", default=str(ROOT / "data" / "raw"), help="AEMO 月度 CSV 所在文件夹，默认 data/raw")
+    c = ssub.add_parser("run", help="执行 sql/ 下的查询库")
+    c.add_argument("--level", default="all", choices=["1", "2", "3", "all"]); c.add_argument("--rows", type=int, default=12)
+    c = ssub.add_parser("query", help="执行任意一条 SQL")
+    c.add_argument("sql"); c.add_argument("--rows", type=int, default=30); c.add_argument("--save", default=None, metavar="NAME")
+    sp.set_defaults(fn=cmd_sql)
 
     a = ap.parse_args()
     a.fn(a)

@@ -120,6 +120,22 @@ At the close of day D-1 the model forecasts all 288 intervals of day D, using on
 - **Australia:** daily realised revenue from the GBM strategy → each simulated year resamples 365 days with replacement (keeping the randomness of spike events) × a lognormal market multiplier × annual spread compression × capacity fade. Capex follows a triangular distribution; output is a 15-year pre-tax real IRR.
 - **China:** 15-year annual cash flow with four revenue streams (energy arbitrage, capacity price, ancillary services, capacity leasing), 70% debt, depreciation and the "3 years exempt, 3 years half-rate" tax holiday. Outputs project and equity IRR, LCOS, break-even revenue and a tornado sensitivity.
 
+### Database and SQL analysis (`bess_econ/sql/`, `sql/`)
+
+The cleaned prices and backtest results are also loaded into a SQLite star schema (Python's built-in `sqlite3`, no extra dependencies), so the same questions can be answered in SQL:
+
+- **Fact tables:** `fact_price` (210,528 five-minute intervals), `fact_dispatch_daily` (365 days × 4 strategies), `fact_scenario`. **Dimensions:** `dim_date`, `dim_interval` (288 slots, peak / trough flags), `dim_strategy`. **Views:** `v_price`, `v_daily_spread`, `v_monthly_summary`.
+- **Data-quality checks in SQL** run at build time and are stored in `data_quality`: 288 intervals per day, no missing days, no nulls, no duplicate keys, prices within NEM limits, no orphan dates — all 12 pass.
+- **Query library in three levels** (30 queries; every query is annotated with the business question, the SQL technique and how to read the result; outputs saved to `outputs/sql/`):
+  `01_basics.sql` (aggregation, CASE WHEN), `02_intermediate.sql` (CTEs, ROW_NUMBER / RANK, LAG / LEAD, rolling 7- and 30-day mean and volatility, self-joins, revenue concentration), `03_advanced.sql` (gaps and islands, price duration curve with NTILE, spike-event analysis, a pure-SQL arbitrage backtest, EXPLAIN QUERY PLAN).
+
+Selected results:
+
+- **Negative-price runs (gaps and islands):** 2,836 separate runs over 2024–2025; the longest lasted 11.7 hours (2 Dec 2025, 05:45–17:25). Runs of 2 hours or more are only 407 of them but hold 80% of all negative-price time.
+- **Pure-SQL arbitrage backtest vs MILP:** charging in the best 2-hour window and discharging in a later 2-hour window, chosen with hindsight each day, captures **79.6%** of perfect-foresight MILP revenue — slightly above the GBM forecast strategy (76.3%), which never sees actual prices. The window search uses a `MIN() OVER (… ROWS BETWEEN UNBOUNDED PRECEDING AND 24 PRECEDING)` frame instead of a pairwise self-join, and is verified day by day against a brute-force numpy search. The version that ignores time order (cheapest 24 intervals in, dearest 24 out) looks better at 86.1%, but is infeasible on 195 of 365 days.
+- **Where MILP's extra value comes from** (A$k/MW/yr): 204.2 with 1.5 cycles/day → 180.8 when capped at 1 cycle (−23.4, the second half-cycle) → 162.5 for fixed 2-hour blocks at constant power (−18.3, splitting and shaping charge/discharge) → 139.0 for the fixed 10–12 / 17–19 schedule (−23.5, picking the best hours).
+- **Spike days:** 18 days with prices above A$1,000/MWh delivered 37% of 2025 perfect-foresight revenue.
+
 ## Usage
 
 ```bash
@@ -143,7 +159,13 @@ python run.py china evaluate --preset shandong --hours 2 --set rte=0.88
 # 5. Refresh the results sections of both READMEs (including the scenario table)
 python scripts/update_readme.py
 
-# Tests (18 cases: timestamp convention, gaps and duplicates, energy conservation, mutual exclusion, no data leakage, IRR values, etc.)
+# 6. SQL analysis: build the SQLite database (with data-quality checks), run the query library, or run any query
+python run.py sql build
+python run.py sql run --level all          # or --level 1 / 2 / 3; CSVs go to outputs/sql/
+python run.py sql query "SELECT season, AVG(rrp) FROM v_price GROUP BY season"
+
+# Tests (24 cases: timestamp convention, gaps and duplicates, energy conservation, mutual exclusion, no data leakage, IRR values,
+# SQL vs pandas, SQL backtest bounded by MILP, data-quality checks, etc.)
 python -m pytest -q
 
 # Without real data, check the pipeline on synthetic data (results are not meaningful)

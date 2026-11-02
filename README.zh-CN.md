@@ -120,6 +120,22 @@ D-1 日收盘时预测 D 日 288 个区间，特征只用 D-1 及更早数据：
 - **澳洲**：GBM 策略的逐日真实可实现收益 → 每年有放回抽样 365 天（保留尖峰事件的偶然性）× 市场乘数（对数正态）× 价差逐年压缩 × 容量衰减，投资成本按三角分布，15 年税前实际 IRR。
 - **中国**：15 年年度现金流，四类收益（电能量套利、容量电价、辅助服务、容量租赁），70% 贷款、折旧、三免三减半，输出全投资 / 资本金 IRR、LCOS、盈亏平衡收入和龙卷风敏感性。
 
+### 数据库与 SQL 分析（`bess_econ/sql/`、`sql/`）
+
+清洗后的电价和回测结果同时写入一个 SQLite 星型数据库（Python 自带 `sqlite3`，不加依赖），同样的问题可以用 SQL 回答：
+
+- **事实表**：`fact_price`（210,528 个 5 分钟区间）、`fact_dispatch_daily`（365 天 × 4 种策略）、`fact_scenario`；**维度表**：`dim_date`、`dim_interval`（288 个区间，含峰 / 谷标记）、`dim_strategy`；**视图**：`v_price`、`v_daily_spread`、`v_monthly_summary`。
+- **用 SQL 做数据质量检查**，建库时自动执行并写入 `data_quality` 表：每天 288 个区间、交易日连续、无空值、主键无重复、电价在 NEM 上下限内、无孤儿日期，12 项全部通过。
+- **三级查询库**（30 条，每条都用中文注释写明业务问题、SQL 知识点和结果解读，结果保存到 `outputs/sql/`）：
+  `01_basics.sql`（聚合、CASE WHEN）、`02_intermediate.sql`（CTE、ROW_NUMBER / RANK、LAG / LEAD、7 日 / 30 日滚动均值与波动率、自连接、收益集中度）、`03_advanced.sql`（gaps and islands、NTILE 价格持续曲线、尖峰事件分析、纯 SQL 套利回测、EXPLAIN QUERY PLAN）。
+
+部分结果：
+
+- **连续负电价（gaps and islands）**：2024–2025 年共 2,836 段，最长一段 11.7 小时（2025-12-02 05:45–17:25）；≥ 2 小时的段只有 407 段，却占了 80% 的负电价时间。
+- **纯 SQL 套利回测 vs MILP**：每天事后选出最佳的 2 小时充电窗口和其后的 2 小时放电窗口，拿到 MILP 完美预知收入的 **79.6%**，略高于不看未来电价的 GBM 预测策略（76.3%）。窗口搜索用 `MIN() OVER (… ROWS BETWEEN UNBOUNDED PRECEDING AND 24 PRECEDING)` 窗口帧代替两两自连接，并用 numpy 暴力枚举逐日核对。不考虑先后顺序的版本（最便宜 24 个区间充、最贵 24 个区间放）看起来有 86.1%，但 365 天里有 195 天物理上做不到。
+- **MILP 多出的收益从哪来**（千 A$/MW/年）：每天 1.5 次循环 204.2 → 限 1 次循环 180.8（−23.4，第二个半次循环）→ 固定 2 小时恒功率窗口 162.5（−18.3，分段充放、按价格调功率）→ 固定 10–12 点充 / 17–19 点放 139.0（−23.5，挑选最佳时段）。
+- **尖峰日**：电价超过 A$1,000/MWh 的 18 天贡献了 2025 年完美预知收入的 37%。
+
 ## 用法
 
 ```bash
@@ -143,7 +159,13 @@ python run.py china evaluate --preset shandong --hours 2 --set rte=0.88
 # 5. 根据结果刷新 README 的结论区块（含情景实验表）
 python scripts/update_readme.py
 
-# 测试（18 个用例：时间戳约定、缺口与重复处理、能量守恒、互斥、无数据泄漏、IRR 数值等）
+# 6. SQL 分析：建库（含数据质量检查）、执行查询库、执行任意 SQL
+python run.py sql build
+python run.py sql run --level all          # 或 --level 1 / 2 / 3，结果 CSV 存到 outputs/sql/
+python run.py sql query "SELECT season, AVG(rrp) FROM v_price GROUP BY season"
+
+# 测试（24 个用例：时间戳约定、缺口与重复处理、能量守恒、互斥、无数据泄漏、IRR 数值、
+# SQL 与 pandas 结果一致、SQL 回测不超过 MILP、数据质量检查等）
 python -m pytest -q
 
 # 没有真实数据时，用合成数据验证流程（结论无效）

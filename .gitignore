@@ -6,3 +6,5 @@ data/fixture/
 data/*.parquet
 outputs/nem_demo/
 data/cache/
+*.sqlite
+*.sqlite-journal

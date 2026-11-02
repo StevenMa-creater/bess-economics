@@ -1,0 +1,2 @@
+﻿id,parent,notused,detail
+3,0,165,SEARCH fact_price USING COVERING INDEX idx_price_rrp (rrp>?)
